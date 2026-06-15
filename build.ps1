@@ -131,6 +131,19 @@ if ($LASTEXITCODE -ne 0) {
 
 Get-ChildItem "publish/win-x64/*.pdb" -ErrorAction SilentlyContinue | Remove-Item -Force
 
+# Resolve the version: CI passes APP_VERSION (set by GitVersion); local
+# builds call GitVersion directly when the tool is installed, falling back
+# to 1.0.0-dev when it is not available.
+$appVersion = $env:APP_VERSION
+if (-not $appVersion) {
+    $gvOutput = dotnet-gitversion /output json 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue
+    if ($gvOutput) {
+        $appVersion = $gvOutput.MajorMinorPatch
+    }
+}
+if (-not $appVersion) { $appVersion = "1.0.0" }
+Write-Host "==> Version: $appVersion" -ForegroundColor Cyan
+
 $exePath = "publish/win-x64/LecturIA.exe"
 $signedExe = Invoke-SignTool -FilePath (Resolve-Path $exePath)
 if (-not $signedExe -and ($CertificatePath -or $CertificateThumbprint)) {
@@ -154,12 +167,12 @@ if (-not $iscc) {
 }
 
 Write-Host "==> Compiling installer with $iscc" -ForegroundColor Cyan
-& $iscc "installer/LecturIA.iss"
+& $iscc "installer/LecturIA.iss" /DAppVersion=$appVersion
 if ($LASTEXITCODE -ne 0) {
     throw "ISCC.exe failed (exit code $LASTEXITCODE)."
 }
 
-$installer = Get-ChildItem "dist/LecturIA-Setup-*.exe" |
+$installer = Get-ChildItem "dist/lecturia-recorder-*.exe" |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 

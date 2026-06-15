@@ -20,7 +20,7 @@ up.
 This produces:
 
 - `publish/win-x64/LecturIA.exe` — self-contained executable (~71 MB).
-- `dist/LecturIA-Setup-<version>.exe` — compressed installer (~66 MB).
+- `dist/lecturia-recorder-<version>.exe` — compressed installer (~66 MB).
 
 To stop after the publish step (skip Inno Setup):
 
@@ -90,7 +90,7 @@ Update both files and rerun `build.ps1`:
 ## Distribution
 
 The single artifact handed to end users is
-`dist/LecturIA-Setup-<version>.exe`. It is a standard Windows installer:
+`dist/lecturia-recorder-<version>.exe`. It is a standard Windows installer:
 download and double-click.
 
 > Tip: to avoid the SmartScreen warning ("Windows protected your PC"), the

@@ -1,37 +1,78 @@
 name: Release
 
-# Builds a signed installer and publishes a GitHub Release.
+# Runs on every merge to main. GitVersion inspects the conventional commit
+# history and computes the next SemVer version automatically:
 #
-# Triggers:
-#   - Push of a tag matching v*  (e.g. v1.0.0)  -> publishes a Release.
-#   - Manual dispatch                            -> only produces artifacts.
+#   fix:                         -> patch  (x.y.z -> x.y.z+1)
+#   feat:                        -> minor  (x.y.z -> x.y+1.0)
+#   feat!: / BREAKING CHANGE:    -> major  (x.y.z -> x+1.0.0)
+#   chore: / docs: / ci: / ...   -> no release
 #
-# Once SignPath Foundation has approved the project, uncomment the steps
-# marked with "# SignPath:" below and add the required secrets.
+# The first release off a repo with no prior tag is always v1.0.0.
+# Major bumps beyond that are triggered by a breaking-change commit.
 
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  release:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout (full history required by GitVersion)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute version with GitVersion
+        id: gitversion
+        uses: gittools/actions/gitversion/setup@v3
+        with:
+          versionSpec: '6.x'
+
+      - name: Determine version
+        id: version
+        uses: gittools/actions/gitversion/execute@v3
+        with:
+          useConfigFile: true
+
+      - name: Decide whether to release
+        id: should-release
+        shell: pwsh
+        run: |
+          # GitVersion always produces a version. We only release when the
+          # computed version is strictly greater than the latest existing tag,
+          # which happens only when at least one releasable commit exists.
+          $computed  = "${{ steps.version.outputs.majorMinorPatch }}"
+          $latestTag = git describe --tags --match "v[0-9]*" --abbrev=0 2>$null
+          $latest    = if ($latestTag) { $latestTag.TrimStart('v') } else { "0.0.0" }
+
+          $parsedComputed = [version]$computed
+          $parsedLatest   = [version]$latest
+
+          if ($parsedComputed -gt $parsedLatest) {
+            Write-Host "Releasing $computed (was $latest)."
+            "release=true"       >> $env:GITHUB_OUTPUT
+            "version=$computed"  >> $env:GITHUB_OUTPUT
+            "tag=v$computed"     >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "Version $computed is not greater than $latest. No release."
+            "release=false" >> $env:GITHUB_OUTPUT
+          }
 
       - name: Setup .NET 8
+        if: steps.should-release.outputs.release == 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
       - name: Cache NuGet packages
+        if: steps.should-release.outputs.release == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
@@ -39,27 +80,39 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
+      - name: Create and push version tag
+        if: steps.should-release.outputs.release == 'true'
+        shell: pwsh
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.should-release.outputs.tag }}
+          git push origin ${{ steps.should-release.outputs.tag }}
+
       - name: Install Inno Setup
+        if: steps.should-release.outputs.release == 'true'
         run: choco install innosetup -y --no-progress
 
-      - name: Build (publish + installer, unsigned)
+      - name: Build installer
+        if: steps.should-release.outputs.release == 'true'
         shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.should-release.outputs.version }}
         run: ./build.ps1
 
-      - name: Upload unsigned installer
+      - name: Upload unsigned installer as artifact
+        if: steps.should-release.outputs.release == 'true'
         id: upload-unsigned
         uses: actions/upload-artifact@v4
         with:
-          name: lecturia-installer-unsigned
-          path: dist/LecturIA-Setup-*.exe
+          name: lecturia-recorder-${{ steps.should-release.outputs.version }}-unsigned
+          path: dist/lecturia-recorder-*.exe
           if-no-files-found: error
           retention-days: 7
 
       # SignPath: signs the installer through SignPath Foundation. Activate
-      # this section once the project has been approved at https://signpath.org.
-      # Required configuration:
-      #   - GitHub secret SIGNPATH_API_TOKEN
-      #   - SignPath organization id, project slug and signing policy slug.
+      # once the project is approved at https://signpath.org.
+      # Required secrets: SIGNPATH_API_TOKEN
       # Reference: https://about.signpath.io/documentation/build-system-integration
       #
       # - name: Sign installer with SignPath
@@ -77,17 +130,18 @@ jobs:
       # - name: Upload signed installer
       #   uses: actions/upload-artifact@v4
       #   with:
-      #     name: lecturia-installer-signed
-      #     path: dist-signed/LecturIA-Setup-*.exe
+      #     name: lecturia-recorder-${{ steps.should-release.outputs.version }}
+      #     path: dist-signed/lecturia-recorder-*.exe
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.should-release.outputs.release == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.should-release.outputs.tag }}
           files: |
-            dist/LecturIA-Setup-*.exe
+            dist/lecturia-recorder-*.exe
           # When SignPath is active, replace the line above with:
           # files: |
-          #   dist-signed/LecturIA-Setup-*.exe
+          #   dist-signed/lecturia-recorder-*.exe
           generate_release_notes: true
           fail_on_unmatched_files: true

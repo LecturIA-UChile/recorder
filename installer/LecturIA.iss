@@ -12,8 +12,10 @@
 ;      "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\LecturIA.iss
 ; -----------------------------------------------------------------------------
 
+#ifndef AppVersion
+    #define AppVersion "0.0.0"
+#endif
 #define AppName        "LecturIA"
-#define AppVersion     "1.0.0"
 #define AppPublisher   "Facultad de Ciencias Físicas y Matemáticas, Universidad de Chile"
 #define AppExeName     "LecturIA.exe"
 #define AppId          "{{3EF6DAD8-BF62-4D2A-8E70-9333B7DF14E7}"
@@ -34,7 +36,7 @@ PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesInstallIn64BitMode=x64compatible
 ArchitecturesAllowed=x64compatible
 OutputDir=..\dist
-OutputBaseFilename=LecturIA-Setup-{#AppVersion}
+OutputBaseFilename=lecturia-recorder-{#AppVersion}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
