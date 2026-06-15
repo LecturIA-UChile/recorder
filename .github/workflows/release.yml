@@ -45,9 +45,6 @@ jobs:
         id: should-release
         shell: pwsh
         run: |
-          # GitVersion always produces a version. We only release when the
-          # computed version is strictly greater than the latest existing tag,
-          # which happens only when at least one releasable commit exists.
           $computed  = "${{ steps.version.outputs.majorMinorPatch }}"
           $latestTag = git describe --tags --match "v[0-9]*" --abbrev=0 2>$null
           $latest    = if ($latestTag) { $latestTag.TrimStart('v') } else { "0.0.0" }
