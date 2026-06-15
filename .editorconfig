@@ -1,0 +1,69 @@
+# EditorConfig: https://editorconfig.org
+# Top-most config; settings here apply to the whole repository.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{cs,xaml}]
+indent_size = 4
+
+# .NET formatting and style rules. See:
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules
+[*.cs]
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_preserve_single_line_blocks = true
+csharp_preserve_single_line_statements = false
+csharp_prefer_braces = true:warning
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = when_on_single_line:suggestion
+csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
+csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+csharp_using_directive_placement = outside_namespace:warning
+
+# Naming rules
+dotnet_naming_rule.interfaces_should_be_prefixed_with_i.severity = warning
+dotnet_naming_rule.interfaces_should_be_prefixed_with_i.symbols = interfaces
+dotnet_naming_rule.interfaces_should_be_prefixed_with_i.style = i_prefixed_pascal_case
+
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_symbols.interfaces.applicable_accessibilities = *
+
+dotnet_naming_style.i_prefixed_pascal_case.required_prefix = I
+dotnet_naming_style.i_prefixed_pascal_case.capitalization = pascal_case
+
+dotnet_naming_rule.private_fields_should_have_underscore_prefix.severity = warning
+dotnet_naming_rule.private_fields_should_have_underscore_prefix.symbols = private_fields
+dotnet_naming_rule.private_fields_should_have_underscore_prefix.style = underscore_camel_case
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+
+# Sort System.* usings first
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false

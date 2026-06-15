@@ -1,0 +1,93 @@
+name: Release
+
+# Builds a signed installer and publishes a GitHub Release.
+#
+# Triggers:
+#   - Push of a tag matching v*  (e.g. v1.0.0)  -> publishes a Release.
+#   - Manual dispatch                            -> only produces artifacts.
+#
+# Once SignPath Foundation has approved the project, uncomment the steps
+# marked with "# SignPath:" below and add the required secrets.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build (publish + installer, unsigned)
+        shell: pwsh
+        run: ./build.ps1
+
+      - name: Upload unsigned installer
+        id: upload-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: lecturia-installer-unsigned
+          path: dist/LecturIA-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      # SignPath: signs the installer through SignPath Foundation. Activate
+      # this section once the project has been approved at https://signpath.org.
+      # Required configuration:
+      #   - GitHub secret SIGNPATH_API_TOKEN
+      #   - SignPath organization id, project slug and signing policy slug.
+      # Reference: https://about.signpath.io/documentation/build-system-integration
+      #
+      # - name: Sign installer with SignPath
+      #   id: signpath
+      #   uses: signpath/github-action-submit-signing-request@v1
+      #   with:
+      #     api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+      #     organization-id: '<SIGNPATH_ORG_ID>'
+      #     project-slug: 'lecturia-recorder'
+      #     signing-policy-slug: 'release-signing'
+      #     github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+      #     wait-for-completion: true
+      #     output-artifact-directory: 'dist-signed'
+      #
+      # - name: Upload signed installer
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: lecturia-installer-signed
+      #     path: dist-signed/LecturIA-Setup-*.exe
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/LecturIA-Setup-*.exe
+          # When SignPath is active, replace the line above with:
+          # files: |
+          #   dist-signed/LecturIA-Setup-*.exe
+          generate_release_notes: true
+          fail_on_unmatched_files: true

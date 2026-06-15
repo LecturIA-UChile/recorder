@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\LecturIA.Core\LecturIA.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="ClosedXML" Version="0.105.0" />
+        <PackageReference Include="CsvHelper" Version="33.1.0" />
+        <PackageReference Include="NAudio" Version="2.3.0" />
+    </ItemGroup>
+
+</Project>

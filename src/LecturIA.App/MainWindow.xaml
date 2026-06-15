@@ -1,0 +1,96 @@
+﻿<Window x:Class="LecturIA.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:LecturIA.App.ViewModels"
+        mc:Ignorable="d"
+        Title="LecturIA — Grabaciones"
+        Height="640" Width="780"
+        MinHeight="560" MinWidth="640"
+        Background="{StaticResource BackgroundBrush}"
+        Foreground="{StaticResource TextBrush}"
+        WindowStartupLocation="CenterScreen"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Vertical" Margin="0,0,0,12">
+            <TextBlock Text="LecturIA" FontSize="28" FontWeight="Bold"/>
+            <TextBlock Text="Grabación de lectura para evaluación de dominio lector"
+                       FontSize="14"
+                       Foreground="{StaticResource MutedBrush}"
+                       Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <Button Grid.Row="1"
+                Content="Importar lista de estudiantes (.xlsx, .xls, .csv)"
+                Style="{StaticResource PrimaryButton}"
+                HorizontalAlignment="Left"
+                Margin="0,0,0,12"
+                Command="{Binding ImportStudentsCommand}"/>
+
+        <TextBox Grid.Row="2"
+                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                 FontSize="14"
+                 Padding="8,6"
+                 Margin="0,0,0,8"
+                 BorderBrush="#CBD2D9"
+                 BorderThickness="1"
+                 ToolTip="Escribe para filtrar la lista de estudiantes"/>
+
+        <Border Grid.Row="3"
+                BorderBrush="#CBD2D9"
+                BorderThickness="1"
+                CornerRadius="4"
+                Background="White">
+            <ListBox ItemsSource="{Binding StudentsView}"
+                     SelectedItem="{Binding SelectedStudent}"
+                     DisplayMemberPath="Name"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     FontSize="14"/>
+        </Border>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,16,0,8">
+            <TextBlock Text="Estudiante seleccionado: " FontWeight="SemiBold" FontSize="14"/>
+            <TextBlock Text="{Binding SelectedStudent.Name, FallbackValue='Ninguno', TargetNullValue='Ninguno'}"
+                       FontSize="14"/>
+        </StackPanel>
+
+        <Button Grid.Row="5"
+                Content="{Binding RecordButtonText}"
+                HorizontalAlignment="Left"
+                Command="{Binding ToggleRecordingCommand}">
+            <Button.Style>
+                <Style TargetType="Button" BasedOn="{StaticResource RecordButton}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsRecording}" Value="True">
+                            <Setter Property="Background" Value="{StaticResource StopBrush}"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Button.Style>
+        </Button>
+
+        <StackPanel Grid.Row="6" Orientation="Vertical" Margin="0,16,0,0">
+            <TextBlock Text="{Binding StatusMessage}"
+                       FontSize="13"
+                       Foreground="{StaticResource MutedBrush}"
+                       TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding RecordingsFolderHint}"
+                       FontSize="12"
+                       Foreground="{StaticResource MutedBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,4,0,0"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0-windows</TargetFramework>
+        <UseWPF>true</UseWPF>
+
+        <AssemblyName>LecturIA</AssemblyName>
+        <RootNamespace>LecturIA.App</RootNamespace>
+        <AssemblyTitle>LecturIA — Grabaciones</AssemblyTitle>
+        <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    </PropertyGroup>
+
+    <!--
+        Settings applied only when running `dotnet publish`. Producing a
+        self-contained, single-file executable keeps the installer payload
+        small and avoids requiring the .NET runtime on the target machine.
+    -->
+    <PropertyGroup Condition="'$(_IsPublishing)' == 'true'">
+        <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
+        <SelfContained>true</SelfContained>
+        <PublishSingleFile>true</PublishSingleFile>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\LecturIA.Core\LecturIA.Core.csproj" />
+        <ProjectReference Include="..\LecturIA.Infrastructure\LecturIA.Infrastructure.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.142" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Resource Include="Assets\app.ico" />
+    </ItemGroup>
+
+</Project>
