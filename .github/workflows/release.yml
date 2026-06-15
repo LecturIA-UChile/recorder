@@ -46,17 +46,21 @@ jobs:
         shell: pwsh
         run: |
           $computed  = "${{ steps.version.outputs.majorMinorPatch }}"
+
           $latestTag = git describe --tags --match "v[0-9]*" --abbrev=0 2>$null
-          $latest    = if ($latestTag) { $latestTag.TrimStart('v') } else { "0.0.0" }
+          # git describe exits with code 128 when no tags exist; suppress it.
+          $LASTEXITCODE = 0
+
+          $latest = if ($latestTag) { $latestTag.TrimStart('v') } else { "0.0.0" }
 
           $parsedComputed = [version]$computed
           $parsedLatest   = [version]$latest
 
           if ($parsedComputed -gt $parsedLatest) {
             Write-Host "Releasing $computed (was $latest)."
-            "release=true"       >> $env:GITHUB_OUTPUT
-            "version=$computed"  >> $env:GITHUB_OUTPUT
-            "tag=v$computed"     >> $env:GITHUB_OUTPUT
+            "release=true"      >> $env:GITHUB_OUTPUT
+            "version=$computed" >> $env:GITHUB_OUTPUT
+            "tag=v$computed"    >> $env:GITHUB_OUTPUT
           } else {
             Write-Host "Version $computed is not greater than $latest. No release."
             "release=false" >> $env:GITHUB_OUTPUT
