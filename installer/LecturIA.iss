@@ -62,9 +62,9 @@ Source: "{#SourceRoot}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{userprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; \
-    Comment: "Grabación de lectura para evaluación de dominio lector"
+    Comment: "Grabación de lecturas para la evaluación del dominio lector"
 Name: "{userdesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; \
-    Comment: "Grabación de lectura para evaluación de dominio lector"; \
+    Comment: "Grabación de lecturas para la evaluación del dominio lector"; \
     Tasks: desktopicon
 
 [Run]

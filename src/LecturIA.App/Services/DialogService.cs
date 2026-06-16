@@ -34,4 +34,16 @@ internal sealed class DialogService : IDialogService
     {
         MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
     }
+
+    /// <inheritdoc />
+    public bool Confirm(string title, string message)
+    {
+        var result = MessageBox.Show(
+            message,
+            title,
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question,
+            MessageBoxResult.No);
+        return result == MessageBoxResult.Yes;
+    }
 }

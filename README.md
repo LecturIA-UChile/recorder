@@ -1,4 +1,4 @@
-# LecturIA — Recorder
+# LecturIA Recorder
 
 Windows desktop application for primary-school teachers in Chile. It manages
 a class roster and records each student reading aloud, producing WAV files
