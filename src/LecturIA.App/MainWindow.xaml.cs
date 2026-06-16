@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.Reflection;
+using System.Windows;
 
 using LecturIA.App.ViewModels;
 
@@ -21,6 +22,31 @@ public partial class MainWindow : Window
         _viewModel = viewModel;
         DataContext = viewModel;
         InitializeComponent();
+        Title = BuildTitle();
         Loaded += async (_, _) => await _viewModel.InitializeAsync();
+    }
+
+    private static string BuildTitle()
+    {
+        var version = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+
+        if (!string.IsNullOrWhiteSpace(version))
+        {
+            // MinVer appends the default pre-release identifier "dev" when the
+            // current commit has no release tag. Show a friendlier label for
+            // local development builds instead of the raw version string.
+            if (version.Contains("-dev.", StringComparison.Ordinal))
+            {
+                return "LecturIA Recorder (Development Build)";
+            }
+
+            // Strip build metadata (everything after '+') for display.
+            var withoutMetadata = version.Split('+')[0];
+            return $"LecturIA Recorder v{withoutMetadata}";
+        }
+
+        return "LecturIA Recorder";
     }
 }

@@ -21,4 +21,13 @@ public interface IDialogService
 
     /// <summary>Displays a modal informational dialog.</summary>
     void ShowInfo(string title, string message);
+
+    /// <summary>
+    /// Displays a modal yes/no confirmation dialog.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> when the user confirmed, <see langword="false"/>
+    /// otherwise.
+    /// </returns>
+    bool Confirm(string title, string message);
 }

@@ -4,16 +4,19 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:LecturIA.App.ViewModels"
+        xmlns:b="http://schemas.microsoft.com/xaml/behaviors"
+        xmlns:behaviors="clr-namespace:LecturIA.App.Behaviors"
         mc:Ignorable="d"
-        Title="LecturIA — Grabaciones"
-        Height="640" Width="780"
-        MinHeight="560" MinWidth="640"
-        Background="{StaticResource BackgroundBrush}"
-        Foreground="{StaticResource TextBrush}"
+        Title="LecturIA Recorder"
+        Height="680" Width="780"
+        MinHeight="600" MinWidth="640"
+        Background="{DynamicResource BackgroundBrush}"
+        Foreground="{DynamicResource TextBrush}"
         WindowStartupLocation="CenterScreen"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}">
     <Grid Margin="24">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -23,72 +26,322 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Orientation="Vertical" Margin="0,0,0,12">
-            <TextBlock Text="LecturIA" FontSize="28" FontWeight="Bold"/>
-            <TextBlock Text="Grabación de lectura para evaluación de dominio lector"
-                       FontSize="14"
-                       Foreground="{StaticResource MutedBrush}"
-                       Margin="0,4,0,0"/>
-        </StackPanel>
+        <!-- Header row: title + dark mode toggle -->
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
-        <Button Grid.Row="1"
-                Content="Importar lista de estudiantes (.xlsx, .xls, .csv)"
-                Style="{StaticResource PrimaryButton}"
-                HorizontalAlignment="Left"
+            <StackPanel Grid.Column="0" Orientation="Vertical">
+                <TextBlock Text="LecturIA Recorder" FontSize="28" FontWeight="Bold"/>
+                <TextBlock Text="Grabación de lecturas para la evaluación del dominio lector"
+                           FontSize="14"
+                           Foreground="{DynamicResource MutedBrush}"
+                           Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <!-- Dark mode toggle -->
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Top"
+                        Margin="0,4,0,0">
+                <TextBlock Text="Modo oscuro"
+                           FontSize="12"
+                           Foreground="{DynamicResource MutedBrush}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"/>
+                <CheckBox IsChecked="{Binding IsDarkMode}"
+                          Style="{StaticResource ToggleSwitch}"
+                          VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0"
+                    Content="Importar curso (.xlsx, .xls, .csv)"
+                    Style="{StaticResource PrimaryButton}"
+                    HorizontalAlignment="Left"
+                    Command="{Binding AddCourseCommand}"/>
+
+            <!-- Shown only when the course limit is reached. -->
+            <Border Grid.Column="1"
+                    Margin="12,0,0,0"
+                    Padding="10,6"
+                    CornerRadius="4"
+                    Background="{DynamicResource WarningBackgroundBrush}"
+                    BorderBrush="{DynamicResource WarningBorderBrush}"
+                    BorderThickness="1"
+                    VerticalAlignment="Center"
+                    Visibility="{Binding CanAddMoreCourses,
+                        Converter={StaticResource InverseBoolToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#x26A0;"
+                               FontSize="13"
+                               Foreground="{DynamicResource WarningTextBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding Path=(vm:MainViewModel.CourseLimitMessage)}"
+                               FontSize="12"
+                               Foreground="{DynamicResource WarningTextBrush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Course header: shown only when at least one course is loaded. -->
+        <Border Grid.Row="2"
                 Margin="0,0,0,12"
-                Command="{Binding ImportStudentsCommand}"/>
-
-        <TextBox Grid.Row="2"
-                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                 FontSize="14"
-                 Padding="8,6"
-                 Margin="0,0,0,8"
-                 BorderBrush="#CBD2D9"
-                 BorderThickness="1"
-                 ToolTip="Escribe para filtrar la lista de estudiantes"/>
-
-        <Border Grid.Row="3"
-                BorderBrush="#CBD2D9"
+                Padding="12,10"
+                BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="1"
                 CornerRadius="4"
-                Background="White">
-            <ListBox ItemsSource="{Binding StudentsView}"
-                     SelectedItem="{Binding SelectedStudent}"
-                     DisplayMemberPath="Name"
-                     BorderThickness="0"
-                     Background="Transparent"
-                     FontSize="14"/>
+                Background="{DynamicResource SurfaceBrush}"
+                Visibility="{Binding HasAnyCourse, Converter={StaticResource BoolToVisibility}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           VerticalAlignment="Center"
+                           FontSize="14"
+                           Margin="0,0,8,0"><Run FontWeight="Bold" Text="Curso"/><Run Text=": "/></TextBlock>
+
+                <!-- Single course: two-line display. -->
+                <StackPanel Grid.Column="1"
+                            Orientation="Vertical"
+                            VerticalAlignment="Center"
+                            Visibility="{Binding IsSingleCourse, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock FontSize="14"
+                               TextTrimming="CharacterEllipsis"
+                               Text="{Binding SelectedCourse.CourseLabel, FallbackValue=''}"/>
+                    <TextBlock FontSize="11"
+                               Foreground="{DynamicResource MutedBrush}"
+                               TextTrimming="CharacterEllipsis"
+                               Margin="0,1,0,0"
+                               Text="{Binding SelectedCourse.SchoolLabel, FallbackValue=''}"/>
+                </StackPanel>
+
+                <!-- Two or more courses: selector (shows CourseLabel + SchoolLabel via DataTemplate). -->
+                <ComboBox Grid.Column="1"
+                          ItemsSource="{Binding Courses}"
+                          SelectedItem="{Binding SelectedCourse}"
+                          IsEnabled="{Binding IsIdle}"
+                          FontSize="14"
+                          VerticalAlignment="Center"
+                          Visibility="{Binding HasMultipleCourses, Converter={StaticResource BoolToVisibility}}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Vertical" Margin="0,2">
+                                <TextBlock FontSize="13" Text="{Binding CourseLabel}"/>
+                                <TextBlock FontSize="11"
+                                           Foreground="{DynamicResource MutedBrush}"
+                                           Text="{Binding SchoolLabel}"
+                                           Margin="0,1,0,0"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <Button Grid.Column="2"
+                        Content="Eliminar curso"
+                        Style="{StaticResource DangerButton}"
+                        Margin="12,0,0,0"
+                        VerticalAlignment="Center"
+                        Command="{Binding DeleteCurrentCourseCommand}"/>
+            </Grid>
         </Border>
 
-        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,16,0,8">
+        <!-- Search bar with placeholder text and magnifier icon. -->
+        <Grid Grid.Row="3" Margin="0,0,0,8">
+            <Border BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Background="{DynamicResource SurfaceBrush}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox Grid.Column="0"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="14"
+                             Padding="8,6"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             Foreground="{DynamicResource TextBrush}"
+                             CaretBrush="{DynamicResource TextBrush}"
+                             VerticalContentAlignment="Center"
+                             x:Name="SearchBox"/>
+
+                    <!-- Placeholder shown when SearchText is empty. -->
+                    <TextBlock Grid.Column="0"
+                               Text="Busca estudiantes por RUT, nombre o apellido..."
+                               FontSize="14"
+                               Foreground="{DynamicResource PlaceholderBrush}"
+                               Padding="10,0,0,0"
+                               VerticalAlignment="Center"
+                               IsHitTestVisible="False">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SearchText}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding SearchText}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <!-- Non-clickable magnifier icon. -->
+                    <TextBlock Grid.Column="1"
+                               Text="&#x1F50D;"
+                               FontSize="14"
+                               Padding="6,6"
+                               VerticalAlignment="Center"
+                               IsHitTestVisible="False"
+                               Foreground="{DynamicResource PlaceholderBrush}"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="4"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Background="{DynamicResource SurfaceBrush}">
+            <Grid>
+                <ListView ItemsSource="{Binding StudentsView}"
+                          SelectedItem="{Binding SelectedStudent}"
+                          BorderThickness="0"
+                          Background="Transparent"
+                          Foreground="{DynamicResource TextBrush}"
+                          FontSize="14"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <b:Interaction.Behaviors>
+                        <behaviors:StretchColumnsGridViewBehavior/>
+                    </b:Interaction.Behaviors>
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="RUT"      DisplayMemberBinding="{Binding Rut}"/>
+                            <GridViewColumn Header="Nombre"   DisplayMemberBinding="{Binding FirstName}"/>
+                            <GridViewColumn Header="Apellido" DisplayMemberBinding="{Binding LastName}"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+
+                <!-- Placeholder shown when the student list is empty. -->
+                <TextBlock Text="No hay estudiantes en este curso."
+                           FontSize="14"
+                           Foreground="{DynamicResource PlaceholderBrush}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           IsHitTestVisible="False"
+                           Visibility="{Binding HasNoStudents, Converter={StaticResource BoolToVisibility}}"/>
+
+                <!-- Loading overlay shown during initial data load. -->
+                <StackPanel HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Orientation="Vertical"
+                            IsHitTestVisible="False"
+                            Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
+                    <Canvas Width="36" Height="36" HorizontalAlignment="Center">
+                        <Canvas.RenderTransform>
+                            <RotateTransform x:Name="SpinnerRotation" CenterX="18" CenterY="18"/>
+                        </Canvas.RenderTransform>
+                        <Canvas.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="SpinnerRotation"
+                                            Storyboard.TargetProperty="Angle"
+                                            From="0" To="360"
+                                            Duration="0:0:0.9"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Canvas.Triggers>
+                        <Path StrokeThickness="3.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              Stroke="{DynamicResource MutedBrush}">
+                            <Path.Data>
+                                <PathGeometry>
+                                    <PathFigure StartPoint="18,2" IsClosed="false">
+                                        <ArcSegment Point="34,18"
+                                                    Size="16,16"
+                                                    SweepDirection="Clockwise"
+                                                    IsLargeArc="False"/>
+                                    </PathFigure>
+                                </PathGeometry>
+                            </Path.Data>
+                        </Path>
+                    </Canvas>
+                    <TextBlock Text="Cargando datos..."
+                               FontSize="13"
+                               Foreground="{DynamicResource MutedBrush}"
+                               HorizontalAlignment="Center"
+                               Margin="0,10,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,16,0,8">
             <TextBlock Text="Estudiante seleccionado: " FontWeight="SemiBold" FontSize="14"/>
-            <TextBlock Text="{Binding SelectedStudent.Name, FallbackValue='Ninguno', TargetNullValue='Ninguno'}"
+            <TextBlock Text="{Binding SelectedStudent.DisplayLabel, FallbackValue='Ninguno', TargetNullValue='Ninguno'}"
                        FontSize="14"/>
         </StackPanel>
 
-        <Button Grid.Row="5"
-                Content="{Binding RecordButtonText}"
-                HorizontalAlignment="Left"
-                Command="{Binding ToggleRecordingCommand}">
-            <Button.Style>
-                <Style TargetType="Button" BasedOn="{StaticResource RecordButton}">
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsRecording}" Value="True">
-                            <Setter Property="Background" Value="{StaticResource StopBrush}"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Button.Style>
-        </Button>
+        <StackPanel Grid.Row="6" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button Content="{Binding RecordButtonText}"
+                    Command="{Binding ToggleRecordingCommand}">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource RecordButton}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsRecording}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource StopBrush}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
 
-        <StackPanel Grid.Row="6" Orientation="Vertical" Margin="0,16,0,0">
+            <StackPanel Orientation="Vertical"
+                        Margin="16,0,0,0"
+                        VerticalAlignment="Center">
+                <TextBlock Text="Formato de audio"
+                           FontSize="11"
+                           Foreground="{DynamicResource MutedBrush}"/>
+                <ComboBox ItemsSource="{Binding AvailableFormats}"
+                          SelectedItem="{Binding SelectedFormat}"
+                          DisplayMemberPath="DisplayLabel"
+                          IsEnabled="{Binding IsIdle}"
+                          MinWidth="220"
+                          FontSize="13"
+                          Margin="0,2,0,0"/>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="7" Orientation="Vertical" Margin="0,16,0,0">
             <TextBlock Text="{Binding StatusMessage}"
                        FontSize="13"
-                       Foreground="{StaticResource MutedBrush}"
+                       Foreground="{DynamicResource MutedBrush}"
                        TextWrapping="Wrap"/>
             <TextBlock Text="{Binding RecordingsFolderHint}"
                        FontSize="12"
-                       Foreground="{StaticResource MutedBrush}"
+                       Foreground="{DynamicResource MutedBrush}"
                        TextWrapping="Wrap"
                        Margin="0,4,0,0"/>
         </StackPanel>

@@ -19,8 +19,8 @@ up.
 
 This produces:
 
-- `publish/win-x64/LecturIA.exe` — self-contained executable (~71 MB).
-- `dist/lecturia-recorder-<version>.exe` — compressed installer (~66 MB).
+- `publish/win-x64/LecturIA.exe`, self-contained executable (~71 MB).
+- `dist/lecturia-recorder-<version>.exe`, compressed installer (~66 MB).
 
 To stop after the publish step (skip Inno Setup):
 
@@ -83,9 +83,9 @@ To uninstall: Settings → Apps → LecturIA → Uninstall.
 
 Update both files and rerun `build.ps1`:
 
-1. `Directory.Build.props` — `<Version>`, `<FileVersion>`,
+1. `Directory.Build.props`, `<Version>`, `<FileVersion>`,
    `<AssemblyVersion>`.
-2. `installer/LecturIA.iss` — `#define AppVersion`.
+2. `installer/LecturIA.iss`, `#define AppVersion`.
 
 ## Distribution
 

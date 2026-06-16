@@ -7,7 +7,7 @@
 
         <AssemblyName>LecturIA</AssemblyName>
         <RootNamespace>LecturIA.App</RootNamespace>
-        <AssemblyTitle>LecturIA — Grabaciones</AssemblyTitle>
+        <AssemblyTitle>LecturIA Recorder</AssemblyTitle>
         <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     </PropertyGroup>
 
