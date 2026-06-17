@@ -1,5 +1,4 @@
 using LecturIA.Core.Models;
-using LecturIA.Core.Recording;
 
 namespace LecturIA.Core.Abstractions;
 
@@ -13,9 +12,9 @@ public interface IRecordingPathResolver
     string RecordingsFolder { get; }
 
     /// <summary>
-    /// Returns a non-existing path for the given student in the requested
-    /// container format. When previous recordings exist, a numeric suffix is
-    /// appended to avoid overwriting them.
+    /// Returns a non-existing MP3 path for the given student. When previous
+    /// recordings exist, a numeric suffix is appended to avoid overwriting
+    /// them.
     /// </summary>
-    string ResolveFor(Student student, AudioFormat format);
+    string ResolveFor(Student student);
 }
