@@ -1,7 +1,7 @@
 # LecturIA Recorder
 
 Windows desktop application for primary-school teachers in Chile. It manages
-a class roster and records each student reading aloud, producing WAV files
+a class roster and records each student reading aloud, producing MP3 files
 ready for downstream evaluation of reading quality (*dominio lector*).
 
 The user interface is in Spanish because the target users are Chilean
@@ -12,11 +12,13 @@ English.
 
 - Imports the student roster from an Excel (`.xlsx`, `.xls`) or CSV file.
 - Incremental search over the loaded roster.
-- Microphone recording captured as 16 kHz mono 16-bit WAV, a format
-  compatible with any downstream speech-processing tool.
+- Microphone recording captured as 16 kHz mono MP3 at 64 kbps, a format
+  that keeps files small while remaining transparent for downstream speech
+  recognition (Whisper and similar).
 - Recordings are saved to
-  `Desktop\LecturIA_grabaciones\<NAME>.wav`. When a file already exists for
-  the same student, a numeric suffix is appended automatically.
+  `Desktop\Grabaciones LecturIA\<RUT>_<NOMBRE>_<APELLIDO>.mp3`. When a file
+  already exists for the same student, a numeric suffix is appended
+  automatically.
 - Per-user installer that does not require administrator rights.
 
 ## Technical stack
@@ -71,11 +73,11 @@ application or synced to remote servers:
   ```json
   { "nombres": ["NAME 1", "NAME 2", "..."] }
   ```
-- Recordings: `Desktop\LecturIA_grabaciones\<NAME>.wav`
+- Recordings: `Desktop\Grabaciones LecturIA\<RUT>_<NOMBRE>_<APELLIDO>.mp3`
 
 This repository **does not** contain real rosters or recordings. The
-patterns `names.json`, `*.wav`, and the recordings folder are blocked in
-`.gitignore` to prevent accidental commits.
+patterns `names.json`, `*.mp3`, `*.wav`, and the recordings folder are
+blocked in `.gitignore` to prevent accidental commits.
 
 ## License
 

@@ -55,14 +55,6 @@ public sealed partial class MainViewModel : ObservableObject
         StudentsView = CollectionViewSource.GetDefaultView(Students);
         StudentsView.Filter = MatchesSearch;
 
-        AvailableFormats = new[]
-        {
-            new AudioFormatOption(AudioFormat.Wav, "WAV, sin pérdida (más pesado)"),
-            new AudioFormatOption(AudioFormat.Mp3, "MP3, comprimido (más ligero)"),
-        };
-        _selectedFormat = AvailableFormats.FirstOrDefault(o => o.Value == _settings.RecordingFormat)
-            ?? AvailableFormats[0];
-
         _audioRecorder.StateChanged += OnRecorderStateChanged;
         StatusMessage = "Listo. Importa una planilla para comenzar.";
         RecordingsFolderHint = $"Las grabaciones se guardan en: {_pathResolver.RecordingsFolder}";
@@ -77,9 +69,6 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>Filterable view over <see cref="Students"/> driven by <see cref="SearchText"/>.</summary>
     public ICollectionView StudentsView { get; }
-
-    /// <summary>Audio format options exposed to the UI selector.</summary>
-    public IReadOnlyList<AudioFormatOption> AvailableFormats { get; }
 
     /// <summary>Hint showing the fixed recordings folder path.</summary>
     public string RecordingsFolderHint { get; }
@@ -127,10 +116,6 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _isDarkMode;
-
-    /// <summary>Format applied to the next recording.</summary>
-    [ObservableProperty]
-    private AudioFormatOption _selectedFormat;
 
     private const int MaxCourses = 15;
 
@@ -221,24 +206,6 @@ public sealed partial class MainViewModel : ObservableObject
         SelectedStudent = null;
         StudentsView.Refresh();
         OnPropertyChanged(nameof(HasNoStudents));
-    }
-
-    partial void OnSelectedFormatChanged(AudioFormatOption value)
-    {
-        if (_settings.RecordingFormat == value.Value)
-        {
-            return;
-        }
-
-        _settings.RecordingFormat = value.Value;
-        try
-        {
-            _settings.Save();
-        }
-        catch (Exception ex)
-        {
-            _dialogService.ShowError("No se pudo guardar el formato de audio", ex.Message);
-        }
     }
 
     private bool MatchesSearch(object item)
@@ -392,9 +359,8 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            var format = SelectedFormat.Value;
-            var outputPath = _pathResolver.ResolveFor(SelectedStudent, format);
-            _audioRecorder.Start(outputPath, format);
+            var outputPath = _pathResolver.ResolveFor(SelectedStudent);
+            _audioRecorder.Start(outputPath);
             StatusMessage = $"Grabando a {SelectedStudent.Name}...";
         }
         catch (Exception ex)

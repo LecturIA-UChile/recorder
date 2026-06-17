@@ -1,6 +1,5 @@
 using LecturIA.Core.Abstractions;
 using LecturIA.Core.Models;
-using LecturIA.Core.Recording;
 
 namespace LecturIA.Infrastructure.Storage;
 
@@ -18,6 +17,7 @@ namespace LecturIA.Infrastructure.Storage;
 public sealed class DesktopRecordingPathResolver : IRecordingPathResolver
 {
     private const string DefaultFolderName = "Grabaciones LecturIA";
+    private const string RecordingExtension = ".mp3";
 
     /// <summary>
     /// Initializes the resolver and ensures the recordings folder exists.
@@ -33,13 +33,12 @@ public sealed class DesktopRecordingPathResolver : IRecordingPathResolver
     public string RecordingsFolder { get; private set; }
 
     /// <inheritdoc />
-    public string ResolveFor(Student student, AudioFormat format)
+    public string ResolveFor(Student student)
     {
         ArgumentNullException.ThrowIfNull(student);
 
         var safeName = BuildFileName(student);
-        var extension = GetExtension(format);
-        var basePath = Path.Combine(RecordingsFolder, $"{safeName}{extension}");
+        var basePath = Path.Combine(RecordingsFolder, $"{safeName}{RecordingExtension}");
 
         if (!File.Exists(basePath))
         {
@@ -48,7 +47,7 @@ public sealed class DesktopRecordingPathResolver : IRecordingPathResolver
 
         for (var i = 1; i < int.MaxValue; i++)
         {
-            var candidate = Path.Combine(RecordingsFolder, $"{safeName}_{i}{extension}");
+            var candidate = Path.Combine(RecordingsFolder, $"{safeName}_{i}{RecordingExtension}");
             if (!File.Exists(candidate))
             {
                 return candidate;
@@ -57,14 +56,6 @@ public sealed class DesktopRecordingPathResolver : IRecordingPathResolver
 
         throw new InvalidOperationException("Could not generate a unique path for the recording.");
     }
-
-    private static string GetExtension(AudioFormat format) =>
-        format switch
-        {
-            AudioFormat.Wav => ".wav",
-            AudioFormat.Mp3 => ".mp3",
-            _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unsupported audio format."),
-        };
 
     private static string SanitizeFileName(string name)
     {

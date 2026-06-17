@@ -15,12 +15,11 @@ public interface IAudioRecorder : IAsyncDisposable
 
     /// <summary>
     /// Starts recording, writing the audio data to <paramref name="outputFilePath"/>
-    /// using the requested container format.
+    /// as MP3.
     /// </summary>
     /// <param name="outputFilePath">Absolute path of the file to create.</param>
-    /// <param name="format">Container format used to encode the captured samples.</param>
     /// <exception cref="InvalidOperationException">A recording is already in progress.</exception>
-    void Start(string outputFilePath, AudioFormat format);
+    void Start(string outputFilePath);
 
     /// <summary>
     /// Stops the active recording and returns the resulting file path and duration.

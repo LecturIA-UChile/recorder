@@ -13,7 +13,9 @@
 **/estudiantes*.json
 **/lista_*.json
 **/LecturIA_grabaciones/
+**/Grabaciones LecturIA/
 *.wav
+*.mp3
 # Allow non-PII example fixtures explicitly:
 !**/names.example.json
 

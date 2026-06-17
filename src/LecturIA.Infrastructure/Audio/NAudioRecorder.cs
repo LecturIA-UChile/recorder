@@ -10,13 +10,14 @@ namespace LecturIA.Infrastructure.Audio;
 
 /// <summary>
 /// Implementation of <see cref="IAudioRecorder"/> built on top of NAudio
-/// (<see cref="WaveInEvent"/> plus a format-specific writer).
+/// (<see cref="WaveInEvent"/> plus an MP3 writer).
 /// </summary>
 /// <remarks>
 /// The recorder captures mono audio at 16 kHz / 16-bit, the input shape
 /// expected by downstream speech models such as Whisper. The captured
-/// samples are persisted to disk either as uncompressed PCM (WAV) or
-/// encoded to MP3 on the fly via libmp3lame.
+/// samples are encoded to MP3 on the fly via libmp3lame, which keeps files
+/// roughly four times smaller than uncompressed PCM at a bitrate that is
+/// transparent for speech recognition.
 /// </remarks>
 public sealed class NAudioRecorder : IAudioRecorder
 {
@@ -32,7 +33,7 @@ public sealed class NAudioRecorder : IAudioRecorder
     private const int Mp3BitrateKbps = 64;
 
     private WaveInEvent? _waveIn;
-    private Stream? _writer;
+    private LameMP3FileWriter? _writer;
     private string? _outputPath;
     private Stopwatch? _stopwatch;
     private RecordingState _state = RecordingState.Idle;
@@ -45,7 +46,7 @@ public sealed class NAudioRecorder : IAudioRecorder
     public event EventHandler<RecordingState>? StateChanged;
 
     /// <inheritdoc />
-    public void Start(string outputFilePath, AudioFormat format)
+    public void Start(string outputFilePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(outputFilePath);
 
@@ -66,7 +67,7 @@ public sealed class NAudioRecorder : IAudioRecorder
             WaveFormat = new WaveFormat(SampleRateHz, BitsPerSample, Channels),
             BufferMilliseconds = 50,
         };
-        _writer = CreateWriter(outputFilePath, _waveIn.WaveFormat, format);
+        _writer = new LameMP3FileWriter(outputFilePath, _waveIn.WaveFormat, Mp3BitrateKbps);
 
         _waveIn.DataAvailable += OnDataAvailable;
         _waveIn.RecordingStopped += OnRecordingStopped;
@@ -108,14 +109,6 @@ public sealed class NAudioRecorder : IAudioRecorder
 
         DisposeNativeResources();
     }
-
-    private static Stream CreateWriter(string outputFilePath, WaveFormat waveFormat, AudioFormat format) =>
-        format switch
-        {
-            AudioFormat.Wav => new WaveFileWriter(outputFilePath, waveFormat),
-            AudioFormat.Mp3 => new LameMP3FileWriter(outputFilePath, waveFormat, Mp3BitrateKbps),
-            _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unsupported audio format."),
-        };
 
     private void OnDataAvailable(object? sender, WaveInEventArgs e)
     {
@@ -175,7 +168,7 @@ public sealed class NAudioRecorder : IAudioRecorder
         }
 
         // Disposing the writer flushes any buffered samples and finalizes
-        // the container header (RIFF for WAV, the LAME tag for MP3).
+        // the LAME tag at the end of the MP3 stream.
         _writer?.Dispose();
         _writer = null;
         _stopwatch = null;

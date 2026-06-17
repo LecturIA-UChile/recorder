@@ -317,21 +317,6 @@
                     </Style>
                 </Button.Style>
             </Button>
-
-            <StackPanel Orientation="Vertical"
-                        Margin="16,0,0,0"
-                        VerticalAlignment="Center">
-                <TextBlock Text="Formato de audio"
-                           FontSize="11"
-                           Foreground="{DynamicResource MutedBrush}"/>
-                <ComboBox ItemsSource="{Binding AvailableFormats}"
-                          SelectedItem="{Binding SelectedFormat}"
-                          DisplayMemberPath="DisplayLabel"
-                          IsEnabled="{Binding IsIdle}"
-                          MinWidth="220"
-                          FontSize="13"
-                          Margin="0,2,0,0"/>
-            </StackPanel>
         </StackPanel>
 
         <StackPanel Grid.Row="7" Orientation="Vertical" Margin="0,16,0,0">
