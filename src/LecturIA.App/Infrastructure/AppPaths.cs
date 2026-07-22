@@ -18,12 +18,18 @@ internal static class AppPaths
         "LecturIA");
 
     /// <summary>
-    /// JSON file holding the persisted course list (with their students).
-    /// The legacy file name <c>names.json</c> is preserved so that data
-    /// stored by previous releases is still found and migrated on first
-    /// load. The gitignore patterns target this exact file name.
+    /// JSON file holding the persisted course list. Students are stored
+    /// as opaque UIDs only; no PII is written to this file.
     /// </summary>
-    public static string CoursesFile { get; } = Path.Combine(AppDataDirectory, "names.json");
+    public static string CoursesFile { get; } = Path.Combine(AppDataDirectory, "courses.json");
+
+    /// <summary>
+    /// Path of the legacy file produced by older versions of the
+    /// application. Contained PII in plain text. The current repository
+    /// migrates its content into <see cref="CoursesFile"/> on first load
+    /// and deletes it afterwards.
+    /// </summary>
+    public static string LegacyNamesFile { get; } = Path.Combine(AppDataDirectory, "names.json");
 
     /// <summary>Creates the user data directory if it does not exist.</summary>
     public static void EnsureCreated()

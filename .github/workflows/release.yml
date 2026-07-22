@@ -94,6 +94,17 @@ jobs:
         if: steps.should-release.outputs.release == 'true'
         run: choco install innosetup -y --no-progress
 
+      - name: Materialize UID key from secret
+        if: steps.should-release.outputs.release == 'true'
+        shell: pwsh
+        env:
+          UID_KEY_B64: ${{ secrets.UID_KEY_B64 }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:UID_KEY_B64)) {
+              throw "UID_KEY_B64 secret is not set. See docs/security/encryption.md."
+          }
+          Set-Content -Path "src/LecturIA.App/Assets/uid-key.txt" -Value $env:UID_KEY_B64 -NoNewline
+
       - name: Build installer
         if: steps.should-release.outputs.release == 'true'
         shell: pwsh

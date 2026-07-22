@@ -5,9 +5,8 @@
 .kiro/
 
 # =============================================================================
-# Personally identifiable information (PII). The application stores the
-# student list under %LOCALAPPDATA%\LecturIA\names.json and recordings on the
-# desktop. The patterns below are a safety net against accidental commits.
+# PII safety net. These patterns match local user data so it cannot be
+# committed to the repository by accident.
 # =============================================================================
 **/names.json
 **/estudiantes*.json
@@ -16,8 +15,29 @@
 **/Grabaciones LecturIA/
 *.wav
 *.mp3
-# Allow non-PII example fixtures explicitly:
+*.lra
+# Allow example fixtures explicitly:
 !**/names.example.json
+
+# =============================================================================
+# Cryptographic key material. PEM files are ignored by default; the only
+# committed public key is allowed below.
+# =============================================================================
+*.pem
+!**/public-key.pem
+*.p12
+*.pfx
+*.key
+
+# Application UID key. Regenerate with the keys tool on each developer
+# machine and ship as a build secret in CI. NEVER commit.
+**/uid-key.txt
+
+# Ed25519 admin private keys live here (one per distributor). The *.key
+# pattern in the crypto section already blocks them; this blocks the whole
+# scratch folder too. Only the public keys in admin-public-keys.txt are
+# committed. Never commit the private keys.
+.keys-local/
 
 # =============================================================================
 # .NET build outputs
@@ -77,3 +97,15 @@ Desktop.ini
 # Logs
 # =============================================================================
 *.log
+
+# =============================================================================
+# Developer-only Markdown notes. Anything ending in .local.md is treated as
+# personal scratch space and never committed.
+# =============================================================================
+*.local.md
+
+# =============================================================================
+# Thesis working notes. Internal design/audit documentation that supports the
+# thesis but must not ship with the repository.
+# =============================================================================
+thesis/

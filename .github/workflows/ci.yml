@@ -53,5 +53,15 @@ jobs:
       - name: Restore
         run: dotnet restore LecturIA.sln
 
+      - name: Materialize UID key from secret
+        shell: pwsh
+        env:
+          UID_KEY_B64: ${{ secrets.UID_KEY_B64 }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:UID_KEY_B64)) {
+              throw "UID_KEY_B64 secret is not set. See docs/security/encryption.md."
+          }
+          Set-Content -Path "src/LecturIA.App/Assets/uid-key.txt" -Value $env:UID_KEY_B64 -NoNewline
+
       - name: Build
         run: dotnet build LecturIA.sln -c Release --no-restore --nologo
