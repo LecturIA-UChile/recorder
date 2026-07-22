@@ -13,7 +13,6 @@ namespace LecturIA.Infrastructure.Storage;
 public sealed class DesktopRecordingPathResolver : IRecordingPathResolver
 {
     private const string DefaultFolderName = "Grabaciones LecturIA";
-    private const string RecordingExtension = ".mp3";
 
     // Custom extension so the operating system does not associate the
     // files with a default media player. Recordings are encrypted blobs,
