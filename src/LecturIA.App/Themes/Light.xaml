@@ -27,6 +27,10 @@
     <SolidColorBrush x:Key="WarningBorderBrush"     Color="#FFEAA7"/>
     <SolidColorBrush x:Key="WarningTextBrush"       Color="#856404"/>
 
+    <!-- Modal overlay scrim, used by the pre-recording countdown. Almost
+         opaque so the dimmed UI stays visible behind the countdown text. -->
+    <SolidColorBrush x:Key="OverlayScrimBrush"      Color="#F0F5F7FA"/>
+
     <!-- =====================================================================
          GridViewColumnHeader
          ===================================================================== -->
@@ -261,6 +265,25 @@
                 </Style>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <Style x:Key="AudioInputComboBox"
+           TargetType="ComboBox"
+           BasedOn="{StaticResource {x:Type ComboBox}}">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsTestingAudio}" Value="True">
+                <Setter Property="IsEnabled" Value="False"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsPlayingAudioTest}" Value="True">
+                <Setter Property="IsEnabled" Value="False"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsRecording}" Value="True">
+                <Setter Property="IsEnabled" Value="False"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsCountingDown}" Value="True">
+                <Setter Property="IsEnabled" Value="False"/>
+            </DataTrigger>
+        </Style.Triggers>
     </Style>
 
 </ResourceDictionary>

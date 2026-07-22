@@ -12,6 +12,7 @@ namespace LecturIA.App;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
+    private bool _isInitialized;
 
     /// <summary>
     /// Initializes the window and triggers the asynchronous bootstrap of
@@ -23,7 +24,37 @@ public partial class MainWindow : Window
         DataContext = viewModel;
         InitializeComponent();
         Title = BuildTitle();
-        Loaded += async (_, _) => await _viewModel.InitializeAsync();
+        Loaded += async (_, _) =>
+        {
+            if (_isInitialized)
+            {
+                return;
+            }
+
+            _isInitialized = true;
+            await _viewModel.InitializeAsync();
+        };
+    }
+
+    /// <summary>
+    /// Clamps the window to the current screen work area and recenters it.
+    /// Without this, a default size larger than the work area (which can
+    /// happen on small screens or under high DPI scaling) pushes the title
+    /// bar above the top edge, leaving the window impossible to drag.
+    /// </summary>
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        var workArea = SystemParameters.WorkArea;
+
+        MinWidth = Math.Min(MinWidth, workArea.Width);
+        MinHeight = Math.Min(MinHeight, workArea.Height);
+        Width = Math.Min(Width, workArea.Width);
+        Height = Math.Min(Height, workArea.Height);
+
+        Left = Math.Max(workArea.Left, workArea.Left + ((workArea.Width - Width) / 2));
+        Top = Math.Max(workArea.Top, workArea.Top + ((workArea.Height - Height) / 2));
     }
 
     private static string BuildTitle()

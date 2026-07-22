@@ -32,11 +32,65 @@
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+        <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.19.2" />
+        <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.19.2" />
         <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.142" />
     </ItemGroup>
 
     <ItemGroup>
         <Resource Include="Assets\app.ico" />
     </ItemGroup>
+
+    <ItemGroup>
+        <!--
+            The owner's RSA public key is embedded as a binary resource so
+            it ships with the executable. It is loaded at startup by
+            EmbeddedPublicKeyResource and used to wrap per-recording AES
+            content keys. The matching private key MUST stay outside the
+            repository at all times. See docs/security/encryption.md.
+        -->
+        <EmbeddedResource Include="Assets\public-key.pem">
+            <LogicalName>LecturIA.App.Assets.public-key.pem</LogicalName>
+        </EmbeddedResource>
+
+        <!--
+            The UID key is a 32-byte secret used to derive the symmetric
+            keys that pseudonymize student identifiers. It is generated
+            once with the keys tool, NEVER committed, and embedded into
+            the binary at build time. Local builds rely on the file at
+            Assets\uid-key.txt; CI builds materialize it from a build
+            secret. The build fails clearly when the file is missing.
+        -->
+        <EmbeddedResource Include="Assets\uid-key.txt">
+            <LogicalName>LecturIA.App.Assets.uid-key.txt</LogicalName>
+        </EmbeddedResource>
+
+        <!--
+            Distributor Ed25519 public keys used to verify admin login
+            tokens. Unlike the UID key, this file contains only public
+            keys and is safe to commit. Admin mode is unreachable when it
+            holds no keys, so the build does not require any entries.
+            See docs/security/admin-token.local.md.
+        -->
+        <EmbeddedResource Include="Assets\admin-public-keys.txt">
+            <LogicalName>LecturIA.App.Assets.admin-public-keys.txt</LogicalName>
+        </EmbeddedResource>
+
+        <!--
+            Fixed, level-organized reading passages available for recording
+            selection. This is an invariant that ships with the binary (same
+            for every teacher), versioned with the release. Growing the set
+            means a new build, which keeps the reading corpus tied to a
+            version.
+        -->
+        <EmbeddedResource Include="Assets\reading-texts.json">
+            <LogicalName>LecturIA.App.Assets.reading-texts.json</LogicalName>
+        </EmbeddedResource>
+    </ItemGroup>
+
+    <Target Name="EnsureUidKeyPresent" BeforeTargets="BeforeBuild">
+        <Error Condition="!Exists('Assets\uid-key.txt')"
+               Text="Assets\uid-key.txt is missing. Generate it once with `dotnet run --project tools/keys/LecturIA.GenerateKeys -- --public-key src/LecturIA.App/Assets/public-key.pem --private-key &lt;path-outside-repo&gt; --uid-key src/LecturIA.App/Assets/uid-key.txt`. The file is intentionally NOT committed; see docs/security/encryption.md." />
+    </Target>
 
 </Project>

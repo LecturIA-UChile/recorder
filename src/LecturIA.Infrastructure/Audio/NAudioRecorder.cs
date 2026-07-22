@@ -9,51 +9,226 @@ using NAudio.Wave;
 namespace LecturIA.Infrastructure.Audio;
 
 /// <summary>
-/// Implementation of <see cref="IAudioRecorder"/> built on top of NAudio
-/// (<see cref="WaveInEvent"/> plus an MP3 writer).
+/// Implements audio input testing, sample playback, and encrypted MP3 recording with NAudio.
 /// </summary>
 /// <remarks>
-/// The recorder captures mono audio at 16 kHz / 16-bit, the input shape
-/// expected by downstream speech models such as Whisper. The captured
-/// samples are encoded to MP3 on the fly via libmp3lame, which keeps files
-/// roughly four times smaller than uncompressed PCM at a bitrate that is
-/// transparent for speech recognition.
+/// Recordings use mono audio at 16 kHz and 16-bit, the input shape expected
+/// by downstream speech models. Unencrypted MP3 bytes never touch the file system.
 /// </remarks>
 public sealed class NAudioRecorder : IAudioRecorder
 {
     private const int SampleRateHz = 16_000;
     private const int Channels = 1;
     private const int BitsPerSample = 16;
-
-    /// <summary>
-    /// Bitrate used by the MP3 encoder. 64 kbps is a sweet spot for mono
-    /// speech at 16 kHz: roughly four times smaller than WAV while still
-    /// transparent for downstream speech recognition.
-    /// </summary>
     private const int Mp3BitrateKbps = 64;
+    private const int InputTestMaxSeconds = 15;
+    private const int InputTestMaxBytes =
+        SampleRateHz * Channels * (BitsPerSample / 8) * InputTestMaxSeconds;
+
+    private readonly IRecordingEncryptor _encryptor;
+    private readonly object _inputTestSync = new();
 
     private WaveInEvent? _waveIn;
+    private WaveInEvent? _inputTest;
+    private MemoryStream? _inputTestBuffer;
+    private byte[]? _inputTestRecording;
+    private WaveOutEvent? _inputTestOutput;
+    private RawSourceWaveStream? _inputTestPlaybackStream;
     private LameMP3FileWriter? _writer;
+    private Stream? _encryptingStream;
     private string? _outputPath;
     private Stopwatch? _stopwatch;
     private RecordingState _state = RecordingState.Idle;
     private TaskCompletionSource<RecordingResult>? _stopCompletion;
 
+    /// <summary>
+    /// Creates a recorder that encrypts every captured byte before writing it to disk.
+    /// </summary>
+    /// <param name="encryptor">Encryptor used to protect each recording.</param>
+    public NAudioRecorder(IRecordingEncryptor encryptor)
+    {
+        ArgumentNullException.ThrowIfNull(encryptor);
+        _encryptor = encryptor;
+    }
+
     /// <inheritdoc />
     public RecordingState State => _state;
+
+    /// <inheritdoc />
+    public TimeSpan InputTestMaximumDuration => TimeSpan.FromSeconds(InputTestMaxSeconds);
+
+    /// <inheritdoc />
+    public bool HasInputTestRecording
+    {
+        get
+        {
+            lock (_inputTestSync)
+            {
+                return _inputTestRecording is { Length: > 0 };
+            }
+        }
+    }
 
     /// <inheritdoc />
     public event EventHandler<RecordingState>? StateChanged;
 
     /// <inheritdoc />
-    public void Start(string outputFilePath)
+    public event EventHandler<float>? InputLevelChanged;
+
+    /// <inheritdoc />
+    public event EventHandler<bool>? InputTestPlaybackStateChanged;
+
+    /// <inheritdoc />
+    public IReadOnlyList<AudioInputDevice> GetInputDevices()
+    {
+        var deviceCount = WaveInEvent.DeviceCount;
+        var devices = new List<AudioInputDevice>(deviceCount);
+        var duplicateCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var deviceNumber = 0; deviceNumber < deviceCount; deviceNumber++)
+        {
+            var capabilities = WaveInEvent.GetCapabilities(deviceNumber);
+            var productName = capabilities.ProductName;
+            duplicateCounts.TryGetValue(productName, out var duplicateCount);
+            duplicateCount++;
+            duplicateCounts[productName] = duplicateCount;
+
+            var displayName = duplicateCount == 1
+                ? productName
+                : $"{productName} ({duplicateCount})";
+            devices.Add(new AudioInputDevice(deviceNumber, displayName));
+        }
+
+        return devices;
+    }
+
+    /// <inheritdoc />
+    public void StartInputTest(int deviceNumber)
+    {
+        if (_state == RecordingState.Recording ||
+            _inputTest is not null ||
+            _inputTestOutput is not null)
+        {
+            throw new InvalidOperationException("Another audio operation is already active.");
+        }
+
+        ValidateDeviceNumber(deviceNumber);
+        ClearInputTestRecording();
+
+        lock (_inputTestSync)
+        {
+            _inputTestBuffer = new MemoryStream(InputTestMaxBytes);
+        }
+
+        _inputTest = CreateWaveInEvent(deviceNumber);
+        _inputTest.DataAvailable += OnInputTestDataAvailable;
+        try
+        {
+            _inputTest.StartRecording();
+        }
+        catch
+        {
+            DisposeInputTest();
+            DiscardInputTestBuffer();
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public void StopInputTest()
+    {
+        if (_inputTest is null)
+        {
+            return;
+        }
+
+        DisposeInputTest();
+        lock (_inputTestSync)
+        {
+            _inputTestRecording = _inputTestBuffer?.ToArray();
+            _inputTestBuffer?.Dispose();
+            _inputTestBuffer = null;
+        }
+
+        InputLevelChanged?.Invoke(this, 0);
+    }
+
+    /// <inheritdoc />
+    public void PlayInputTestRecording()
+    {
+        if (_state == RecordingState.Recording ||
+            _inputTest is not null ||
+            _inputTestOutput is not null)
+        {
+            throw new InvalidOperationException("Another audio operation is already active.");
+        }
+
+        byte[] sample;
+        lock (_inputTestSync)
+        {
+            if (_inputTestRecording is not { Length: > 0 })
+            {
+                throw new InvalidOperationException("No audio input test is available for playback.");
+            }
+
+            sample = _inputTestRecording;
+        }
+
+        var playbackStateRaised = false;
+        try
+        {
+            var sampleStream = new MemoryStream(sample, writable: false);
+            _inputTestPlaybackStream = new RawSourceWaveStream(sampleStream, CreateWaveFormat());
+            _inputTestOutput = new WaveOutEvent();
+            _inputTestOutput.PlaybackStopped += OnInputTestPlaybackStopped;
+            _inputTestOutput.Init(_inputTestPlaybackStream);
+            InputTestPlaybackStateChanged?.Invoke(this, true);
+            playbackStateRaised = true;
+            _inputTestOutput.Play();
+        }
+        catch
+        {
+            DisposeInputTestPlayback();
+            if (playbackStateRaised)
+            {
+                InputTestPlaybackStateChanged?.Invoke(this, false);
+            }
+
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public void StopInputTestPlayback()
+    {
+        _inputTestOutput?.Stop();
+    }
+
+    /// <inheritdoc />
+    public void ClearInputTestRecording()
+    {
+        StopInputTestPlayback();
+        lock (_inputTestSync)
+        {
+            _inputTestRecording = null;
+        }
+    }
+
+    /// <inheritdoc />
+    public void Start(
+        string outputFilePath,
+        int inputDeviceNumber,
+        RecordingMetadata? metadata = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(outputFilePath);
 
-        if (_state == RecordingState.Recording)
+        if (_state == RecordingState.Recording ||
+            _inputTest is not null ||
+            _inputTestOutput is not null)
         {
-            throw new InvalidOperationException("A recording is already in progress.");
+            throw new InvalidOperationException("Another audio operation is already active.");
         }
+
+        ValidateDeviceNumber(inputDeviceNumber);
 
         var directory = Path.GetDirectoryName(outputFilePath);
         if (!string.IsNullOrEmpty(directory))
@@ -62,12 +237,27 @@ public sealed class NAudioRecorder : IAudioRecorder
         }
 
         _outputPath = outputFilePath;
-        _waveIn = new WaveInEvent
+        _waveIn = CreateWaveInEvent(inputDeviceNumber);
+
+        FileStream? fileStream = null;
+        try
         {
-            WaveFormat = new WaveFormat(SampleRateHz, BitsPerSample, Channels),
-            BufferMilliseconds = 50,
-        };
-        _writer = new LameMP3FileWriter(outputFilePath, _waveIn.WaveFormat, Mp3BitrateKbps);
+            fileStream = new FileStream(outputFilePath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            _encryptingStream = _encryptor.WrapForWrite(fileStream, metadata);
+            fileStream = null;
+            _writer = new LameMP3FileWriter(_encryptingStream, _waveIn.WaveFormat, Mp3BitrateKbps);
+        }
+        catch
+        {
+            _writer?.Dispose();
+            _writer = null;
+            _encryptingStream?.Dispose();
+            _encryptingStream = null;
+            fileStream?.Dispose();
+            _waveIn.Dispose();
+            _waveIn = null;
+            throw;
+        }
 
         _waveIn.DataAvailable += OnDataAvailable;
         _waveIn.RecordingStopped += OnRecordingStopped;
@@ -94,6 +284,14 @@ public sealed class NAudioRecorder : IAudioRecorder
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        StopInputTest();
+        DisposeInputTestPlayback();
+        DiscardInputTestBuffer();
+        lock (_inputTestSync)
+        {
+            _inputTestRecording = null;
+        }
+
         if (_state == RecordingState.Recording)
         {
             try
@@ -102,12 +300,63 @@ public sealed class NAudioRecorder : IAudioRecorder
             }
             catch
             {
-                // Errors during disposal are suppressed to avoid masking the
-                // original failure that triggered the dispose.
+                // Disposal must not mask the failure that initiated shutdown.
             }
         }
 
         DisposeNativeResources();
+    }
+
+    private static WaveFormat CreateWaveFormat() =>
+        new(SampleRateHz, BitsPerSample, Channels);
+
+    private static WaveInEvent CreateWaveInEvent(int deviceNumber) => new()
+    {
+        DeviceNumber = deviceNumber,
+        WaveFormat = CreateWaveFormat(),
+        BufferMilliseconds = 50,
+    };
+
+    private static void ValidateDeviceNumber(int deviceNumber)
+    {
+        if (deviceNumber < 0 || deviceNumber >= WaveInEvent.DeviceCount)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(deviceNumber),
+                deviceNumber,
+                "The selected audio input device is not available.");
+        }
+    }
+
+    private void OnInputTestDataAvailable(object? sender, WaveInEventArgs e)
+    {
+        lock (_inputTestSync)
+        {
+            if (_inputTestBuffer is not null)
+            {
+                var availableBytes = InputTestMaxBytes - (int)_inputTestBuffer.Length;
+                var bytesToKeep = Math.Min(e.BytesRecorded, availableBytes);
+                if (bytesToKeep > 0)
+                {
+                    _inputTestBuffer.Write(e.Buffer, 0, bytesToKeep);
+                }
+            }
+        }
+
+        var peak = 0;
+        for (var offset = 0; offset + 1 < e.BytesRecorded; offset += sizeof(short))
+        {
+            var sample = Math.Abs((int)BitConverter.ToInt16(e.Buffer, offset));
+            peak = Math.Max(peak, sample);
+        }
+
+        InputLevelChanged?.Invoke(this, peak / (float)short.MaxValue);
+    }
+
+    private void OnInputTestPlaybackStopped(object? sender, StoppedEventArgs e)
+    {
+        DisposeInputTestPlayback();
+        InputTestPlaybackStateChanged?.Invoke(this, false);
     }
 
     private void OnDataAvailable(object? sender, WaveInEventArgs e)
@@ -157,6 +406,40 @@ public sealed class NAudioRecorder : IAudioRecorder
         StateChanged?.Invoke(this, next);
     }
 
+    private void DisposeInputTest()
+    {
+        if (_inputTest is null)
+        {
+            return;
+        }
+
+        _inputTest.DataAvailable -= OnInputTestDataAvailable;
+        _inputTest.Dispose();
+        _inputTest = null;
+    }
+
+    private void DiscardInputTestBuffer()
+    {
+        lock (_inputTestSync)
+        {
+            _inputTestBuffer?.Dispose();
+            _inputTestBuffer = null;
+        }
+    }
+
+    private void DisposeInputTestPlayback()
+    {
+        if (_inputTestOutput is not null)
+        {
+            _inputTestOutput.PlaybackStopped -= OnInputTestPlaybackStopped;
+            _inputTestOutput.Dispose();
+            _inputTestOutput = null;
+        }
+
+        _inputTestPlaybackStream?.Dispose();
+        _inputTestPlaybackStream = null;
+    }
+
     private void DisposeNativeResources()
     {
         if (_waveIn is not null)
@@ -167,10 +450,10 @@ public sealed class NAudioRecorder : IAudioRecorder
             _waveIn = null;
         }
 
-        // Disposing the writer flushes any buffered samples and finalizes
-        // the LAME tag at the end of the MP3 stream.
         _writer?.Dispose();
         _writer = null;
+        _encryptingStream?.Dispose();
+        _encryptingStream = null;
         _stopwatch = null;
     }
 }

@@ -1,0 +1,24 @@
+# LecturIA distributor public keys (Ed25519).
+#
+# One base64-encoded 32-byte Ed25519 public key per line. A '#' starts a
+# comment that runs to the end of the line, so each key can carry a
+# human-readable distributor label.
+#
+# These are PUBLIC keys and are safe to commit. The matching private keys
+# stay with each distributor and are never committed. A distributor mints
+# an admin token by signing the fixed admin payload with their private key:
+#
+#   dotnet run --project tools/keys/LecturIA.GenerateKeys -- \
+#       --admin-token --admin-key <path-to-their-private.key>
+#
+# Generate a new distributor keypair with:
+#
+#   dotnet run --project tools/keys/LecturIA.GenerateKeys -- \
+#       --admin-keygen --admin-key <path-to-new-private.key> \
+#       --admin-label "Distributor name"
+#
+# The tool prints the public key line to append below. Revoking a
+# distributor means deleting their line and shipping a new build.
+#
+# Admin mode is unreachable when this file contains no keys (fail closed).
+bD3EnIaVezSf6tQ5cd0KqVnWJdHOKHRXH7oksvZoUOo=  # Dev (local)

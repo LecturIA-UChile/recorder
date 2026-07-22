@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <RootNamespace>LecturIA.GenerateKeys</RootNamespace>
+        <AssemblyName>LecturIA.GenerateKeys</AssemblyName>
+
+        <!--
+            This tool is intentionally outside LecturIA.sln. It is run by the
+            application owner to mint a fresh RSA key pair for recording
+            encryption. It is never shipped with the application.
+        -->
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+    </ItemGroup>
+
+</Project>

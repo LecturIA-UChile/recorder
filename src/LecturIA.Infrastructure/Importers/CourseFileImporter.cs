@@ -231,9 +231,11 @@ public sealed class CourseFileImporter : ICourseImporter
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var result = new List<Student>();
+        var rowIndex = 0;
 
         foreach (var row in rows)
         {
+            rowIndex++;
             var rut = row.Rut.Trim();
             var firstName = NormalizeName(row.FirstName);
             var lastName = NormalizeName(row.LastName);
@@ -243,11 +245,14 @@ public sealed class CourseFileImporter : ICourseImporter
                 continue;
             }
 
-            var key = string.IsNullOrWhiteSpace(rut)
-                ? $"{firstName} {lastName}"
-                : rut;
+            if (string.IsNullOrWhiteSpace(rut))
+            {
+                throw new InvalidDataException(
+                    $"Row {rowIndex} ({firstName} {lastName}) does not have a RUT. "
+                    + "Every student must have a RUT.");
+            }
 
-            if (seen.Add(key))
+            if (seen.Add(rut))
             {
                 result.Add(new Student(rut, firstName, lastName));
             }

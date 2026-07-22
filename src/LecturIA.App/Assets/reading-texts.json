@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "texts": [
+    {
+      "id": "el_paseo_n1",
+      "title": "El paseo",
+      "level": 1,
+      "body": "El sol se asoma. Susi se asea y sale de paseo. Se asoma y mima a la mula. Amalia espía al pudú. Él lame su lomo. Samuel pasea a la osa. Ulises le limpia el piso a las palomas. Emma apila los dados, pisa la lupa y el mapa del museo. Emilio sale a la loma, sale solo de paseo."
+    },
+    {
+      "id": "la_maleta_n1",
+      "title": "La maleta",
+      "level": 1,
+      "body": "Amo la maleta loca de mis papás. Tiene de todo: un oso de lana café, una foto de mi linda familia, un mono con pelo lila, un sapo molestoso y un dado con puntos. Tiene las camisas y las faldas de mi mamá, y los pantalones de mi papá. Un pastel y panes de miel. ¡La maleta es fantástica!"
+    },
+    {
+      "id": "la_casita_dulce_n2",
+      "title": "La casita dulce",
+      "level": 2,
+      "body": "La casa era de frutas. Sus muros eran de melón y tuna, y el techo de piña peruana. El piso era de cerezas gigantes y tenía un jardín de papayas con chocolate. Yo viví allí con mi familia. Una vez no me pude aguantar y me devoré la casa casi entera. Solo no me comí las ventanas de betarraga."
+    },
+    {
+      "id": "el_pez_friolento_n2",
+      "title": "El pez friolento",
+      "level": 2,
+      "body": "Enrique es una trucha arcoíris que nació en el sur de Chile. Todo era normal menos su color: mientras los demás tenían escamas multicolores, las suyas eran solo de color morado. Sus padres le preguntaron a la trucha más sabia la razón del porqué su hijo era diferente. Ella les explicó que Enrique sufría de frío, y les aconsejó que lo enviaran a vivir al mar del norte. Enrique estuvo de acuerdo y se fue, pero todos los años vuelve a visitar a su familia."
+    },
+    {
+      "id": "ya_nacio_n2",
+      "title": "Ya nació",
+      "level": 2,
+      "body": "Hace poco nació mi hermana Cecilia. Mi mamá dijo que la cigüeña la trajo con amor, pero no es lo que yo esperaba. Toma leche sin parar y también llora todo el día.\n\nYo le muestro mis juguetes, pero apenas le interesan. Es triste para mí, porque quiero compartirlos con ella. ¿Podremos jugar juntos algún día?\n\nMi abuelo dice que nos parecemos, pero no creo que sea así, pues yo corro rápido mientras ella ni camina. Pero no importa, no la cambio por otra, la quiero igual. Creo que seremos un gran equipo."
+    }
+  ]
+}
