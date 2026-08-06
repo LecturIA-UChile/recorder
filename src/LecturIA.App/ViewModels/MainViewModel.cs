@@ -27,7 +27,6 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IAudioRecorder _audioRecorder;
     private readonly IRecordingPathResolver _pathResolver;
     private readonly IRecordingStatusProvider _recordingStatusProvider;
-    private readonly IRecordingStatusProvider _recordingStatusProvider;
     private readonly IDialogService _dialogService;
     private readonly AppSettings _settings;
     private readonly DispatcherTimer _readingTimer;
@@ -35,7 +34,6 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly DispatcherTimer _latestSessionRecordingPlaybackTimer;
     private int _availableReadingTextCount;
     private static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(200);
-    private static readonly TimeSpan PlaybackProgressInterval = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan PlaybackProgressInterval = TimeSpan.FromMilliseconds(250);
     private const int CountdownSeconds = 3;
     private static readonly TimeSpan CountdownStepInterval = TimeSpan.FromSeconds(1);
@@ -50,7 +48,6 @@ public sealed partial class MainViewModel : ObservableObject
         IAudioRecorder audioRecorder,
         IRecordingPathResolver pathResolver,
         IRecordingStatusProvider recordingStatusProvider,
-        IRecordingStatusProvider recordingStatusProvider,
         IDialogService dialogService,
         IReadingTextProvider readingTextProvider,
         AppSettings settings)
@@ -60,14 +57,12 @@ public sealed partial class MainViewModel : ObservableObject
         _audioRecorder = audioRecorder;
         _pathResolver = pathResolver;
         _recordingStatusProvider = recordingStatusProvider;
-        _recordingStatusProvider = recordingStatusProvider;
         _dialogService = dialogService;
         _settings = settings;
 
         Courses = new ObservableCollection<Course>();
         Courses.CollectionChanged += OnCoursesCollectionChanged;
 
-        Students = new ObservableCollection<StudentListItemViewModel>();
         Students = new ObservableCollection<StudentListItemViewModel>();
         StudentsView = CollectionViewSource.GetDefaultView(Students);
         StudentsView.Filter = MatchesSearch;
@@ -76,14 +71,11 @@ public sealed partial class MainViewModel : ObservableObject
         ReadingTextsView = CollectionViewSource.GetDefaultView(ReadingTexts);
         ReadingTextsView.Filter = MatchesReadingLevel;
         _availableReadingTextCount = ReadingTexts.Count;
-        _availableReadingTextCount = ReadingTexts.Count;
 
         AudioInputDevices = new ObservableCollection<AudioInputDevice>();
         _audioRecorder.StateChanged += OnRecorderStateChanged;
         _audioRecorder.InputLevelChanged += OnInputLevelChanged;
         _audioRecorder.InputTestPlaybackStateChanged += OnInputTestPlaybackStateChanged;
-        _audioRecorder.SessionRecordingPlaybackStateChanged += OnSessionRecordingPlaybackStateChanged;
-        _recordingStatusProvider.StatusChanged += OnRecordingStatusChanged;
         _audioRecorder.SessionRecordingPlaybackStateChanged += OnSessionRecordingPlaybackStateChanged;
         _recordingStatusProvider.StatusChanged += OnRecordingStatusChanged;
         StatusMessage = "Listo.";
@@ -106,19 +98,11 @@ public sealed partial class MainViewModel : ObservableObject
             Interval = PlaybackProgressInterval,
         };
         _latestSessionRecordingPlaybackTimer.Tick += OnLatestSessionRecordingPlaybackTimerTick;
-
-        _latestSessionRecordingPlaybackTimer = new DispatcherTimer(DispatcherPriority.Render)
-        {
-            Interval = PlaybackProgressInterval,
-        };
-        _latestSessionRecordingPlaybackTimer.Tick += OnLatestSessionRecordingPlaybackTimerTick;
     }
 
     /// <summary>Courses currently loaded in the application.</summary>
     public ObservableCollection<Course> Courses { get; }
 
-    /// <summary>Students of the <see cref="SelectedCourse"/>, with UI recording status.</summary>
-    public ObservableCollection<StudentListItemViewModel> Students { get; }
     /// <summary>Students of the <see cref="SelectedCourse"/>, with UI recording status.</summary>
     public ObservableCollection<StudentListItemViewModel> Students { get; }
 
@@ -127,15 +111,6 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>Audio input devices currently reported by Windows.</summary>
     public ObservableCollection<AudioInputDevice> AudioInputDevices { get; }
-
-    /// <summary><see langword="true"/> when no audio input device is available.</summary>
-    public bool HasNoAudioInputs => AudioInputDevices.Count == 0;
-
-    /// <summary><see langword="true"/> when exactly one audio input device is available.</summary>
-    public bool IsSingleAudioInput => AudioInputDevices.Count == 1;
-
-    /// <summary><see langword="true"/> when more than one audio input device is available.</summary>
-    public bool HasMultipleAudioInputs => AudioInputDevices.Count > 1;
 
     /// <summary><see langword="true"/> when no audio input device is available.</summary>
     public bool HasNoAudioInputs => AudioInputDevices.Count == 0;
@@ -159,7 +134,6 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleRecordingCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
     private bool _isTestingAudio;
@@ -178,7 +152,6 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(AudioPlaybackButtonText))]
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestPlaybackCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleRecordingCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
@@ -278,12 +251,9 @@ public sealed partial class MainViewModel : ObservableObject
     private Course? _selectedCourse;
 
     /// <summary>Currently selected roster item, or <see langword="null"/> when none.</summary>
-    /// <summary>Currently selected roster item, or <see langword="null"/> when none.</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ToggleRecordingCommand))]
     [NotifyPropertyChangedFor(nameof(RecordButtonBlockedReason))]
-    [NotifyPropertyChangedFor(nameof(RecordButtonText))]
-    private StudentListItemViewModel? _selectedStudent;
     [NotifyPropertyChangedFor(nameof(RecordButtonText))]
     private StudentListItemViewModel? _selectedStudent;
 
@@ -314,7 +284,6 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
     private bool _isRecording;
 
@@ -325,7 +294,6 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(DeleteCurrentCourseCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestPlaybackCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
     private bool _isBusy;
@@ -345,7 +313,6 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ToggleRecordingCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestPlaybackCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
     private bool _isCountingDown;
@@ -407,9 +374,6 @@ public sealed partial class MainViewModel : ObservableObject
         : SelectedStudent?.IsRecorded == true
             ? "Reemplazar grabación"
             : "Comenzar grabación";
-        : SelectedStudent?.IsRecorded == true
-            ? "Reemplazar grabación"
-            : "Comenzar grabación";
 
     /// <summary>
     /// Tooltip shown on the record button when it is disabled, explaining
@@ -424,11 +388,6 @@ public sealed partial class MainViewModel : ObservableObject
             if (IsRecording || IsBusy || IsCountingDown)
             {
                 return null;
-            }
-
-            if (IsPlayingLatestSessionRecording)
-            {
-                return "Detén la reproducción antes de comenzar una nueva grabación.";
             }
 
             if (IsPlayingLatestSessionRecording)
@@ -525,12 +484,6 @@ public sealed partial class MainViewModel : ObservableObject
         IsPlayingLatestSessionRecording = false;
         LatestSessionRecordingPlaybackPosition = TimeSpan.Zero;
         LatestSessionRecordingPlaybackDuration = TimeSpan.Zero;
-        _latestSessionRecordingPlaybackTimer.Stop();
-        _audioRecorder.ClearLatestSessionRecording();
-        HasLatestSessionRecording = false;
-        IsPlayingLatestSessionRecording = false;
-        LatestSessionRecordingPlaybackPosition = TimeSpan.Zero;
-        LatestSessionRecordingPlaybackDuration = TimeSpan.Zero;
         AuthenticatedUser = null;
         AuthenticatedDisplayName = string.Empty;
         AuthenticatedRole = string.Empty;
@@ -561,8 +514,6 @@ public sealed partial class MainViewModel : ObservableObject
         !IsLoading &&
         !IsCountingDown &&
         !IsTestingAudio &&
-        !IsPlayingAudioTest &&
-        !IsPlayingLatestSessionRecording;
         !IsPlayingAudioTest &&
         !IsPlayingLatestSessionRecording;
 
@@ -622,7 +573,6 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     partial void OnSelectedStudentChanged(StudentListItemViewModel? value)
-    partial void OnSelectedStudentChanged(StudentListItemViewModel? value)
     {
         // Switching students while idle resets the timer and any "time is
         // up" alarm left over from the previous recording, so the teacher
@@ -654,12 +604,8 @@ public sealed partial class MainViewModel : ObservableObject
         if (value is not null)
         {
             _recordingStatusProvider.Refresh();
-            _recordingStatusProvider.Refresh();
             foreach (var student in value.Students)
             {
-                Students.Add(new StudentListItemViewModel(
-                    student,
-                    _recordingStatusProvider.HasCompletedRecording(student)));
                 Students.Add(new StudentListItemViewModel(
                     student,
                     _recordingStatusProvider.HasCompletedRecording(student)));
@@ -682,30 +628,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void UpdateReadingTextOptions()
     {
-        UpdateReadingTextOptions();
-
-        StudentsView.Refresh();
-        SelectedStudent = Students.Count == 1 ? Students[0] : null;
-        OnPropertyChanged(nameof(HasNoStudents));
-    }
-
-    private void UpdateReadingTextOptions()
-    {
         ReadingTextsView.Refresh();
-        var availableTexts = ReadingTextsView.Cast<ReadingText>().ToList();
-        _availableReadingTextCount = availableTexts.Count;
-
-        OnPropertyChanged(nameof(HasNoReadingTexts));
-        OnPropertyChanged(nameof(IsSingleReadingText));
-        OnPropertyChanged(nameof(HasMultipleReadingTexts));
-        OnPropertyChanged(nameof(ReadingSelectionHint));
-
-        if (availableTexts.Count == 1)
-        {
-            SelectedReadingText = availableTexts[0];
-        }
-        else if (SelectedReadingText is not null &&
-                 !availableTexts.Contains(SelectedReadingText))
         var availableTexts = ReadingTextsView.Cast<ReadingText>().ToList();
         _availableReadingTextCount = availableTexts.Count;
 
@@ -741,9 +664,6 @@ public sealed partial class MainViewModel : ObservableObject
     /// Infers a numeric school level from 1 through 4 from a course's
     /// free-text level field. Returns <see langword="null"/> when exactly one
     /// supported level cannot be identified.
-    /// Infers a numeric school level from 1 through 4 from a course's
-    /// free-text level field. Returns <see langword="null"/> when exactly one
-    /// supported level cannot be identified.
     /// </summary>
     private static int? LevelFromCourse(Course? course)
     {
@@ -770,37 +690,20 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         if (normalized.Contains("tercero") || normalized.Contains("tercer") || normalized.Contains('3'))
-        var detectedLevels = new List<int>(4);
-        if (normalized.Contains("primero") || normalized.Contains("primer") || normalized.Contains('1'))
         {
-            detectedLevels.Add(1);
-        }
-
-        if (normalized.Contains("segundo") || normalized.Contains('2'))
-        {
-            detectedLevels.Add(2);
-        }
-
-        if (normalized.Contains("tercero") || normalized.Contains("tercer") || normalized.Contains('3'))
-        {
-            detectedLevels.Add(3);
             detectedLevels.Add(3);
         }
 
         if (normalized.Contains("cuarto") || normalized.Contains('4'))
-        if (normalized.Contains("cuarto") || normalized.Contains('4'))
         {
-            detectedLevels.Add(4);
             detectedLevels.Add(4);
         }
 
-        return detectedLevels.Count == 1 ? detectedLevels[0] : null;
         return detectedLevels.Count == 1 ? detectedLevels[0] : null;
     }
 
     private bool MatchesSearch(object item)
     {
-        if (item is not StudentListItemViewModel student)
         if (item is not StudentListItemViewModel student)
         {
             return false;
@@ -1009,7 +912,6 @@ public sealed partial class MainViewModel : ObservableObject
         (!IsRecording &&
          !IsPlayingAudioTest &&
          !IsPlayingLatestSessionRecording &&
-         !IsPlayingLatestSessionRecording &&
          !IsBusy &&
          !IsCountingDown &&
          SelectedAudioInput is not null);
@@ -1071,37 +973,6 @@ public sealed partial class MainViewModel : ObservableObject
          !IsTestingAudio &&
          !IsPlayingAudioTest &&
          !IsRecording &&
-         !IsPlayingLatestSessionRecording &&
-         !IsBusy &&
-         !IsCountingDown);
-
-    [RelayCommand(CanExecute = nameof(CanToggleLatestSessionRecordingPlayback))]
-    private void ToggleLatestSessionRecordingPlayback()
-    {
-        if (IsPlayingLatestSessionRecording)
-        {
-            _audioRecorder.StopLatestSessionRecordingPlayback();
-            return;
-        }
-
-        try
-        {
-            _audioRecorder.PlayLatestSessionRecording();
-            StatusMessage = "Reproduciendo la última grabación de esta sesión...";
-        }
-        catch (Exception ex)
-        {
-            _dialogService.ShowError("No se pudo reproducir la grabación", ex.Message);
-            StatusMessage = "La última grabación no se pudo reproducir.";
-        }
-    }
-
-    private bool CanToggleLatestSessionRecordingPlayback() =>
-        IsPlayingLatestSessionRecording ||
-        (HasLatestSessionRecording &&
-         !IsTestingAudio &&
-         !IsPlayingAudioTest &&
-         !IsRecording &&
          !IsBusy &&
          !IsCountingDown);
 
@@ -1122,14 +993,6 @@ public sealed partial class MainViewModel : ObservableObject
                 return;
             }
 
-            if (SelectedStudent?.IsRecorded == true &&
-                !_dialogService.Confirm(
-                    "Reemplazar evaluación",
-                    "Este estudiante ya tiene una evaluación registrada. Si continúas, la nueva grabación reemplazará la anterior y sólo se conservará la grabación más reciente."))
-            {
-                return;
-            }
-
             await RunCountdownAsync();
             StartRecording();
         }
@@ -1137,7 +1000,6 @@ public sealed partial class MainViewModel : ObservableObject
 
     private bool CanToggleRecording() =>
         !IsBusy && !IsCountingDown && !IsTestingAudio && !IsPlayingAudioTest &&
-        !IsPlayingLatestSessionRecording &&
         !IsPlayingLatestSessionRecording &&
         (IsRecording ||
             (SelectedStudent is not null &&
@@ -1179,7 +1041,6 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var outputPath = _pathResolver.ResolveFor(SelectedStudent.Student);
-            var outputPath = _pathResolver.ResolveFor(SelectedStudent.Student);
 
             // Recording requires a selected text, so the metadata is
             // always present; it is embedded in the .lra header so the
@@ -1203,61 +1064,8 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task StopRecordingAsync()
     {
         IsBusy = true;
-        IsBusy = true;
         try
         {
-            var recordedStudent = SelectedStudent;
-            var wasReplacement = recordedStudent?.IsRecorded == true;
-            RecordingResult result;
-
-            try
-            {
-                result = await _audioRecorder.StopAsync();
-                HasLatestSessionRecording = _audioRecorder.HasLatestSessionRecording;
-                RefreshLatestSessionRecordingPlaybackProgress();
-            }
-            catch (Exception ex)
-            {
-                _dialogService.ShowError("Error al detener la grabación", ex.Message);
-                StatusMessage = "La grabación falló al detenerse.";
-                return;
-            }
-
-            try
-            {
-                if (recordedStudent is not null)
-                {
-                    _recordingStatusProvider.RetainOnlyLatestRecording(
-                        recordedStudent.Student,
-                        result.FilePath);
-                }
-
-                _recordingStatusProvider.Refresh();
-            }
-            catch (Exception ex)
-            {
-                if (recordedStudent is not null)
-                {
-                    recordedStudent.IsRecorded = true;
-                    OnPropertyChanged(nameof(RecordButtonText));
-                }
-
-                _dialogService.ShowError(
-                    "Evaluación guardada con advertencias",
-                    $"La nueva grabación se guardó correctamente, pero no se pudo completar el reemplazo de la evaluación anterior. Revisa la carpeta de grabaciones. Detalle: {ex.Message}");
-                StatusMessage = "La nueva evaluación se guardó, pero una grabación anterior no se pudo eliminar.";
-                return;
-            }
-
-            if (recordedStudent is not null)
-            {
-                recordedStudent.IsRecorded = true;
-                OnPropertyChanged(nameof(RecordButtonText));
-            }
-
-            StatusMessage = wasReplacement
-                ? "Evaluación reemplazada. Sólo se conserva la grabación más reciente. Puedes escucharla mientras LecturIA permanezca abierta."
-                : "Evaluación guardada. Puedes escucharla mientras LecturIA permanezca abierta.";
             var recordedStudent = SelectedStudent;
             var wasReplacement = recordedStudent?.IsRecorded == true;
             RecordingResult result;
@@ -1383,50 +1191,6 @@ public sealed partial class MainViewModel : ObservableObject
         return $"{totalSeconds / 60:D2}:{totalSeconds % 60:D2}";
     }
 
-    private void OnSessionRecordingPlaybackStateChanged(object? sender, bool isPlaying)
-    {
-        var dispatcher = System.Windows.Application.Current?.Dispatcher;
-        if (dispatcher is null || dispatcher.CheckAccess())
-        {
-            ApplySessionRecordingPlaybackState(isPlaying);
-        }
-        else
-        {
-            dispatcher.BeginInvoke(() => ApplySessionRecordingPlaybackState(isPlaying));
-        }
-    }
-
-    private void ApplySessionRecordingPlaybackState(bool isPlaying)
-    {
-        IsPlayingLatestSessionRecording = isPlaying;
-        RefreshLatestSessionRecordingPlaybackProgress();
-
-        if (isPlaying)
-        {
-            _latestSessionRecordingPlaybackTimer.Start();
-        }
-        else
-        {
-            _latestSessionRecordingPlaybackTimer.Stop();
-            StatusMessage = "Reproducción de la última grabación finalizada.";
-        }
-    }
-
-    private void OnLatestSessionRecordingPlaybackTimerTick(object? sender, EventArgs e) =>
-        RefreshLatestSessionRecordingPlaybackProgress();
-
-    private void RefreshLatestSessionRecordingPlaybackProgress()
-    {
-        LatestSessionRecordingPlaybackPosition = _audioRecorder.LatestSessionRecordingPosition;
-        LatestSessionRecordingPlaybackDuration = _audioRecorder.LatestSessionRecordingDuration;
-    }
-
-    private static string FormatPlaybackTime(TimeSpan value)
-    {
-        var totalSeconds = Math.Max(0, (int)Math.Floor(value.TotalSeconds));
-        return $"{totalSeconds / 60:D2}:{totalSeconds % 60:D2}";
-    }
-
     private void OnInputLevelChanged(object? sender, float level)
     {
         var dispatcher = System.Windows.Application.Current?.Dispatcher;
@@ -1472,29 +1236,6 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(RecordButtonText));
     }
 
-    private void OnRecordingStatusChanged(object? sender, EventArgs e)
-    {
-        var dispatcher = System.Windows.Application.Current?.Dispatcher;
-        if (dispatcher is null || dispatcher.CheckAccess())
-        {
-            UpdateVisibleRecordingStatuses();
-        }
-        else
-        {
-            dispatcher.BeginInvoke(UpdateVisibleRecordingStatuses);
-        }
-    }
-
-    private void UpdateVisibleRecordingStatuses()
-    {
-        foreach (var student in Students)
-        {
-            student.IsRecorded = _recordingStatusProvider.HasCompletedRecording(student.Student);
-        }
-
-        OnPropertyChanged(nameof(RecordButtonText));
-    }
-
     private void OnRecorderStateChanged(object? sender, RecordingState state)
     {
         // The recorder raises events from a background thread; observable
@@ -1507,7 +1248,6 @@ public sealed partial class MainViewModel : ObservableObject
         }
         else
         {
-            dispatcher.BeginInvoke(() => ApplyRecorderState(state));
             dispatcher.BeginInvoke(() => ApplyRecorderState(state));
         }
     }
@@ -1567,23 +1307,14 @@ public sealed partial class MainViewModel : ObservableObject
                     _settings.AudioInputDeviceName,
                     StringComparison.OrdinalIgnoreCase)) ?? AudioInputDevices.FirstOrDefault();
             NotifyAudioInputOptionsChanged();
-            NotifyAudioInputOptionsChanged();
         }
         catch (Exception ex)
         {
             AudioInputDevices.Clear();
             SelectedAudioInput = null;
             NotifyAudioInputOptionsChanged();
-            NotifyAudioInputOptionsChanged();
             _dialogService.ShowError("No se pudieron cargar los micrófonos", ex.Message);
         }
-    }
-
-    private void NotifyAudioInputOptionsChanged()
-    {
-        OnPropertyChanged(nameof(HasNoAudioInputs));
-        OnPropertyChanged(nameof(IsSingleAudioInput));
-        OnPropertyChanged(nameof(HasMultipleAudioInputs));
     }
 
     private void NotifyAudioInputOptionsChanged()
