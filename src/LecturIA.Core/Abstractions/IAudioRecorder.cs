@@ -16,6 +16,18 @@ public interface IAudioRecorder : IAsyncDisposable
     /// <summary>Whether a captured input-test sample is available for playback.</summary>
     bool HasInputTestRecording { get; }
 
+    /// <summary>Whether the latest recording from this application session is available in memory.</summary>
+    bool HasLatestSessionRecording { get; }
+
+    /// <summary>Duration of the latest session recording available for playback.</summary>
+    TimeSpan LatestSessionRecordingDuration { get; }
+
+    /// <summary>Current playback position within the latest session recording.</summary>
+    TimeSpan LatestSessionRecordingPosition { get; }
+
+    /// <summary>Raised whenever playback of the latest session recording starts or stops.</summary>
+    event EventHandler<bool>? SessionRecordingPlaybackStateChanged;
+
     /// <summary>Raised whenever the recorder transitions to a new state.</summary>
     event EventHandler<RecordingState>? StateChanged;
 
@@ -48,6 +60,18 @@ public interface IAudioRecorder : IAsyncDisposable
 
     /// <summary>Discards the retained input-test sample.</summary>
     void ClearInputTestRecording();
+
+    /// <summary>Plays the latest successfully completed recording retained in memory.</summary>
+    /// <exception cref="InvalidOperationException">
+    /// No session recording is available or another audio operation is active.
+    /// </exception>
+    void PlayLatestSessionRecording();
+
+    /// <summary>Stops playback of the latest session recording.</summary>
+    void StopLatestSessionRecordingPlayback();
+
+    /// <summary>Discards the latest session recording retained in memory.</summary>
+    void ClearLatestSessionRecording();
 
     /// <summary>
     /// Starts recording from the selected device, writing the audio data to

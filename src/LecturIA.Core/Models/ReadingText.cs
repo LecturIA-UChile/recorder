@@ -14,8 +14,8 @@ public sealed class ReadingText
     public required string Title { get; init; }
 
     /// <summary>
-    /// Target school level: <c>1</c> for primero básico, <c>2</c> for
-    /// segundo básico.
+    /// Target school level from <c>1</c> for primero básico through <c>4</c>
+    /// for cuarto básico.
     /// </summary>
     public required int Level { get; init; }
 
@@ -24,11 +24,13 @@ public sealed class ReadingText
     /// </summary>
     public required string Body { get; init; }
 
-    /// <summary>Level rendered as the Chilean grade label ("Primero Básico", "Segundo Básico").</summary>
+    /// <summary>Level rendered as its Chilean grade label.</summary>
     public string LevelLabel => Level switch
     {
         1 => "Primero Básico",
         2 => "Segundo Básico",
+        3 => "Tercero Básico",
+        4 => "Cuarto Básico",
         _ => $"{Level}°",
     };
 

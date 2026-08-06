@@ -2,7 +2,7 @@ namespace LecturIA.Core.Abstractions;
 
 /// <summary>
 /// Exposes the application's UID key, the 32-byte symmetric secret used
-/// to derive opaque student identifiers from RUT and name metadata.
+/// to derive opaque persistent student UIDs and RUT-only recording identifiers.
 /// </summary>
 /// <remarks>
 /// Implementations are expected to be long-lived (registered as singletons

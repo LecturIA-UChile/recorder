@@ -12,6 +12,8 @@ namespace LecturIA.App.Behaviors;
 /// </summary>
 public sealed class StretchColumnsGridViewBehavior : Behavior<ListView>
 {
+    private double[]? _columnWeights;
+
     /// <inheritdoc />
     protected override void OnAttached()
     {
@@ -25,16 +27,41 @@ public sealed class StretchColumnsGridViewBehavior : Behavior<ListView>
     {
         AssociatedObject.SizeChanged -= OnSizeChanged;
         AssociatedObject.Loaded -= OnLoaded;
+        _columnWeights = null;
         base.OnDetaching();
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e) => Redistribute();
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        CaptureColumnWeights();
+        Redistribute();
+    }
 
-    private void OnSizeChanged(object sender, SizeChangedEventArgs e) => Redistribute();
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (_columnWeights is not null)
+        {
+            Redistribute();
+        }
+    }
+
+    private void CaptureColumnWeights()
+    {
+        if (AssociatedObject.View is not GridView gridView)
+        {
+            return;
+        }
+
+        _columnWeights = gridView.Columns
+            .Select(column => double.IsNaN(column.Width) || column.Width <= 0 ? 1d : column.Width)
+            .ToArray();
+    }
 
     private void Redistribute()
     {
-        if (AssociatedObject.View is not GridView gridView)
+        if (AssociatedObject.View is not GridView gridView ||
+            _columnWeights is null ||
+            _columnWeights.Length != gridView.Columns.Count)
         {
             return;
         }
@@ -42,16 +69,16 @@ public sealed class StretchColumnsGridViewBehavior : Behavior<ListView>
         // Reserve space for the vertical scrollbar so columns never overflow.
         const double scrollBarWidth = 18;
         var available = AssociatedObject.ActualWidth - scrollBarWidth;
+        var totalWeight = _columnWeights.Sum();
 
-        if (available <= 0 || gridView.Columns.Count == 0)
+        if (available <= 0 || totalWeight <= 0)
         {
             return;
         }
 
-        var share = available / gridView.Columns.Count;
-        foreach (var column in gridView.Columns)
+        for (var index = 0; index < gridView.Columns.Count; index++)
         {
-            column.Width = share;
+            gridView.Columns[index].Width = available * _columnWeights[index] / totalWeight;
         }
     }
 }

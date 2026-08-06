@@ -91,7 +91,7 @@
                 <Border Grid.Row="3"
                         Margin="0,24,0,0"
                         Padding="16,13"
-                        Background="{DynamicResource HeaderBackgroundBrush}"
+                        Background="{DynamicResource RowSelectedBrush}"
                         BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="1"
                         CornerRadius="9">
@@ -116,7 +116,7 @@
                                    FontSize="12.5"
                                    LineHeight="19"
                                    TextWrapping="Wrap"
-                                   Foreground="{DynamicResource MutedBrush}"/>
+                                   Foreground="{DynamicResource AccentBrush}"/>
                     </Grid>
                 </Border>
 
