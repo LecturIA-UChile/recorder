@@ -239,66 +239,6 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     private int? _activeReadingLevel;
 
-    /// <summary>The fixed set of reading passages available for recording selection.</summary>
-    public ObservableCollection<ReadingText> ReadingTexts { get; }
-
-    /// <summary>Audio input devices currently reported by Windows.</summary>
-    public ObservableCollection<AudioInputDevice> AudioInputDevices { get; }
-
-    /// <summary>The input device used for tests and recordings.</summary>
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleRecordingCommand))]
-    [NotifyPropertyChangedFor(nameof(RecordButtonBlockedReason))]
-    private AudioInputDevice? _selectedAudioInput;
-
-    /// <summary><see langword="true"/> while the selected input device is being tested.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(AudioTestButtonText))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestPlaybackCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleRecordingCommand))]
-    [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
-    private bool _isTestingAudio;
-
-    /// <summary>Current input peak as a percentage from 0 to 100.</summary>
-    [ObservableProperty]
-    private double _audioInputLevel;
-
-    /// <summary>Whether the most recent microphone test has an audible sample.</summary>
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestPlaybackCommand))]
-    private bool _hasAudioTestRecording;
-
-    /// <summary><see langword="true"/> while the microphone test sample is playing.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(AudioPlaybackButtonText))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestPlaybackCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleRecordingCommand))]
-    [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
-    private bool _isPlayingAudioTest;
-
-    /// <summary>Caption of the input test button.</summary>
-    public string AudioTestButtonText => IsTestingAudio ? "Detener" : "Probar";
-
-    /// <summary>Caption of the test-sample playback button.</summary>
-    public string AudioPlaybackButtonText => IsPlayingAudioTest ? "Detener" : "Escuchar";
-
-    /// <summary>
-    /// View over <see cref="ReadingTexts"/> filtered to the level of the
-    /// <see cref="SelectedCourse"/>, so the teacher only sees passages that
-    /// match the grade they are recording.
-    /// </summary>
-    public ICollectionView ReadingTextsView { get; }
-
-    /// <summary>
-    /// Level (1 or 2) inferred from the selected course, or
-    /// <see langword="null"/> when it could not be determined. When null,
-    /// no level filter is applied and every text is shown.
-    /// </summary>
-    private int? _activeReadingLevel;
-
     /// <summary>Filterable view over <see cref="Students"/> driven by <see cref="SearchText"/>.</summary>
     public ICollectionView StudentsView { get; }
 
