@@ -23,10 +23,12 @@ What this design protects against:
 
 What this design does NOT protect against:
 
-- Memory access while a recording is in progress. The PCM and MP3 buffers
-  exist in process memory until the encrypting stream consumes them. An
-  attacker with administrative privileges on the recording machine could
-  in principle dump them.
+- Memory access during capture and session-only playback. PCM and MP3 buffers
+  exist in process memory while a recording is in progress. The MP3 bytes from
+  the latest successfully completed recording remain in memory so the teacher
+  can verify it until another recording replaces them, the user signs out, or
+  the application exits. An attacker with administrative privileges on the
+  recording machine could in principle dump these buffers.
 - Forgery. The public key is embedded in the application binary and can
   be extracted by anyone who has the binary. With the public key alone,
   an attacker can produce a syntactically valid `.lra` file containing
@@ -67,6 +69,21 @@ For each new recording the application:
    the SHA-256 of the header as associated data.
 5. Writes a zero-length end sentinel to mark end of stream and detect
    truncation.
+
+## Session-only playback
+
+During capture, the MP3 encoder writes each byte to both the encrypting stream
+and a pending in-memory buffer. The application promotes that buffer for
+playback only after the MP3 writer and encrypted container finalize
+successfully. A failed capture or finalization leaves the previous successful
+session sample unchanged.
+
+Only the latest successfully completed recording is retained. Replacing the
+sample, signing out, or disposing the recorder overwrites its byte array before
+releasing it. The plaintext MP3 is never written to disk. Closing LecturIA ends
+the process and makes the sample unavailable; the application cannot recreate
+it from an existing `.lra` because the private decryption key is intentionally
+absent from the recorder.
 
 ## File format (`.lra` v2)
 
@@ -228,16 +245,20 @@ rotation):
 There is intentionally no in-binary mechanism to revoke or invalidate
 old public keys. Rotation is operational, not cryptographic.
 
-# Identifier pseudonymization (UIDs)
+# Identifier pseudonymization
 
-Every place where student metadata used to land on disk now stores an
-opaque UID instead. This applies to recording file names
-(`<UID>.lra`) and to the persistent course list at
-`%LOCALAPPDATA%\LecturIA\courses.json`. The in-memory model still holds
-full RUT and name during a session, populated by decoding the UIDs at
-load time, so the user-facing UI is unaffected.
+Student data uses two related opaque identifiers derived from the same UID
+master key:
 
-## Construction
+- The persistent course list stores a reversible student UID containing the
+  normalized RUT, first name, and last name. The application decodes it only
+  in memory when loading a course.
+- New recording file names use a one-way identifier derived only from the
+  normalized RUT. This keeps the RUT primary key stable when a student's name
+  is corrected. Legacy recording file names remain readable and are matched
+  by decoding their student UID in memory.
+
+## Persistent course UID construction
 
 A two-key SIV-style scheme built on .NET 8 native primitives:
 
@@ -264,11 +285,57 @@ is detected at decode time), and uses only audited primitives.
 UID length is roughly `ceil((16 + payload_length) * 8 / 5)`, which is
 about 60-90 base32 characters for typical Chilean records.
 
+## Recording identifier construction
+
+New recording names use a keyed one-way pseudonym of the RUT:
+
+```text
+normalized_rut         = uppercase(remove_dots_and_spaces(rut))
+K_recording            = HMAC-SHA256(K_uid, "LECTURIA-RECORDING-RUT-ID")
+digest                 = HMAC-SHA256(K_recording, UTF8(normalized_rut))
+recording_id           = "R1-" || base32_no_padding(digest)
+```
+
+Only the RUT contributes to this identifier. The same RUT therefore keeps
+the same recording identifier if a first name or last name changes. The
+identifier is not decrypted by the application. Instead, the application
+recomputes it from each in-memory roster RUT and compares the result with
+completed recording file names.
+
+The `R1-` prefix distinguishes this format from legacy reversible UIDs.
+When the completion index encounters a legacy file, it decodes that UID in
+memory, derives the new RUT-only identifier, and discards the decoded value.
+This keeps existing recordings visible in the interface without renaming
+files or writing plaintext PII.
+
+## Current evaluation retention
+
+Each student RUT may have only one current evaluation in the recordings folder.
+Replacement follows a save-first policy so a failed capture cannot destroy the
+student's last valid evaluation:
+
+1. The application writes and finalizes the new encrypted `.lra` file using a
+   collision-safe path.
+2. After successful finalization, it verifies that the new file is inside the
+   active recordings folder, is a finalized container, and resolves to the
+   selected student's RUT-derived recording identifier.
+3. It then deletes every other current or legacy recording name that resolves
+   to the same RUT, preserving only the newly completed file.
+
+If an older file cannot be deleted, the new evaluation remains intact and the
+interface reports that replacement cleanup was incomplete. Existing historical
+duplicates are not deleted automatically at startup; they are consolidated only
+after that student is successfully evaluated again.
+
 ## What lands on disk
 
-- Recording files: `<UID>.lra` under
-  `%USERPROFILE%\Desktop\Grabaciones LecturIA\`. Plain RUT or name no
-  longer appears anywhere in the file system.
+- New recording files: `<R1-RUT_PSEUDONYM>.lra` under
+  `%USERPROFILE%\Desktop\Grabaciones LecturIA\`. Collision-safe creation may
+  append `_1`, `_2`, and so on while a previous evaluation still exists. After
+  a successful replacement, the newest file is retained and may keep that
+  suffix. Plain RUT or name does not appear in the file name.
+- Legacy recording files: `<UID>.lra`. The application continues to decode
+  these names in memory when building completion status; files are not renamed.
 - Persistent course list: `%LOCALAPPDATA%\LecturIA\courses.json`. Each
   course stores its school, level, section, and a list of UIDs only.
 - Legacy file `%LOCALAPPDATA%\LecturIA\names.json` (which contained PII
@@ -292,7 +359,8 @@ requires the additional information needed to re-identify subjects to be
 The UID key in this implementation is embedded in the application binary
 and travels with it to the recording machine. That is, the UID key is
 **not** kept separately from the data: a determined attacker who obtains
-the binary can extract the UID key and re-identify any UID they encounter.
+the binary can decrypt reversible course and legacy UIDs, and can test
+candidate RUT values against `R1-` recording identifiers.
 
 This is a deliberate trade-off for the LecturIA deployment context:
 
@@ -316,12 +384,13 @@ system outputs** rather than strict legal pseudonymization. Concretely:
   privacy risks in this deployment.
 - A passive attacker who only obtains `.lra` files cannot recover any
   PII from the file names.
-- An active attacker who additionally obtains the application binary
-  can extract the UID key and recover RUT and name from any UID.
-- A targeted attacker who additionally obtains a Chilean roster can
-  brute-force any UID they wish in a fraction of a second; this is
-  prevented for casual use but is not a defensible posture against a
-  motivated adversary.
+- An active attacker who additionally obtains the application binary can
+  extract the UID key. That key decrypts reversible course and legacy UIDs;
+  `R1-` recording identifiers remain one-way but can be tested against
+  candidate RUT values.
+- A targeted attacker who has both the binary and a Chilean roster can
+  match candidate RUTs to `R1-` identifiers quickly. This is prevented for
+  casual use but is not a defensible posture against a motivated adversary.
 
 The decision is documented here so that a future ethics committee, audit,
 or migration to a stricter pseudonymization model has the full context.
@@ -340,7 +409,8 @@ The owner keeps a copy of the UID key alongside the RSA private key, in
 the same custody (password manager, encrypted offline backup). Linked
 tools that need to decode UIDs use that copy.
 
-A rotation of the UID key invalidates every UID produced under the old
-key: courses persisted with old UIDs become undecodable, recording files
-named with old UIDs cannot be matched to any student record. Rotation
-requires re-importing every roster.
+A rotation of the UID key invalidates every identifier produced under the
+old key: courses persisted with old reversible UIDs become undecodable, and
+both legacy and `R1-` recording file names can no longer be matched to roster
+RUTs. Rotation requires re-importing every roster and an explicit migration
+of recording identifiers if completion history must be preserved.

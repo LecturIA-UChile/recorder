@@ -2,34 +2,28 @@
   "version": 1,
   "texts": [
     {
-      "id": "el_paseo_n1",
-      "title": "El paseo",
-      "level": 1,
-      "body": "El sol se asoma. Susi se asea y sale de paseo. Se asoma y mima a la mula. Amalia espía al pudú. Él lame su lomo. Samuel pasea a la osa. Ulises le limpia el piso a las palomas. Emma apila los dados, pisa la lupa y el mapa del museo. Emilio sale a la loma, sale solo de paseo."
-    },
-    {
       "id": "la_maleta_n1",
       "title": "La maleta",
       "level": 1,
-      "body": "Amo la maleta loca de mis papás. Tiene de todo: un oso de lana café, una foto de mi linda familia, un mono con pelo lila, un sapo molestoso y un dado con puntos. Tiene las camisas y las faldas de mi mamá, y los pantalones de mi papá. Un pastel y panes de miel. ¡La maleta es fantástica!"
-    },
-    {
-      "id": "la_casita_dulce_n2",
-      "title": "La casita dulce",
-      "level": 2,
-      "body": "La casa era de frutas. Sus muros eran de melón y tuna, y el techo de piña peruana. El piso era de cerezas gigantes y tenía un jardín de papayas con chocolate. Yo viví allí con mi familia. Una vez no me pude aguantar y me devoré la casa casi entera. Solo no me comí las ventanas de betarraga."
+      "body": "Amo la maleta loca de mis papás.\nTiene de todo.\nUn oso de lana café.\nUna foto de mi linda familia.\nUn mono con pelo lila y un sapo molestoso.\nY un dado con puntos.\nTiene las camisas y las faldas de mi mamá\ny los pantalones de mi papá.\nUn pastel y panes de miel.\nLa maleta es fantástica."
     },
     {
       "id": "el_pez_friolento_n2",
       "title": "El pez friolento",
       "level": 2,
-      "body": "Enrique es una trucha arcoíris que nació en el sur de Chile. Todo era normal menos su color: mientras los demás tenían escamas multicolores, las suyas eran solo de color morado. Sus padres le preguntaron a la trucha más sabia la razón del porqué su hijo era diferente. Ella les explicó que Enrique sufría de frío, y les aconsejó que lo enviaran a vivir al mar del norte. Enrique estuvo de acuerdo y se fue, pero todos los años vuelve a visitar a su familia."
+      "body": "Enrique es una trucha arcoíris que nació en el sur de Chile. Todo era normal, menos su color. Mientras los demás tenían escamas multicolores, las suyas eran solo de color morado.\n\nSus padres le preguntaron a la trucha más sabia la razón del por qué su hijo era diferente. Ella les explicó que Enrique sufría de frío y les aconsejó que lo enviaran a vivir al mar del norte.\n\nEnrique estuvo de acuerdo y se fue, pero todos los años vuelve a visitar a su familia."
     },
     {
-      "id": "ya_nacio_n2",
-      "title": "Ya nació",
-      "level": 2,
-      "body": "Hace poco nació mi hermana Cecilia. Mi mamá dijo que la cigüeña la trajo con amor, pero no es lo que yo esperaba. Toma leche sin parar y también llora todo el día.\n\nYo le muestro mis juguetes, pero apenas le interesan. Es triste para mí, porque quiero compartirlos con ella. ¿Podremos jugar juntos algún día?\n\nMi abuelo dice que nos parecemos, pero no creo que sea así, pues yo corro rápido mientras ella ni camina. Pero no importa, no la cambio por otra, la quiero igual. Creo que seremos un gran equipo."
+      "id": "por_donde_empezar_n3",
+      "title": "Por dónde empezar",
+      "level": 3,
+      "body": "El anciano maestro Wu estaba un poco cansado. Todos los días, debía soportar las quejas de su joven discípulo Chang. Este se quejaba de todos sus compañeros: que no le ayudaron en tal cosa, que le habían perdido aquello otro, que debió hacer solo la tarea, que nadie quería participar...\n\nAquella mañana no fue diferente. Chang comenzó con su larga lista de lamentos quejosos.\n\nEntonces, el maestro le interrumpió:\n\n-Si es paz lo que buscas, trata de cambiarte primero a ti mismo, no a los demás. Recuerda que, si vas por un camino pedregoso, es más fácil calzarse un par de zapatillas que cubrir con alfombras todo el sendero."
+    },
+    {
+      "id": "por_que_los_osos_panda_tienen_manchas_n4",
+      "title": "¿Por qué los osos panda tienen manchas?",
+      "level": 4,
+      "body": "Cuentan en el Tíbet que hace muchos años iban un día cuatro pastoras caminando, cuando vieron a un pequeño oso panda caer en las garras de un tigre. En ese entonces, los osos panda eran solo de color blanco, sin ninguna mancha. Las cuatro jóvenes decidieron rescatarlo. Por desgracia, el tigre las atacó y ellas perdieron la vida.\n\nCuando los osos gigantes se enteraron de la noticia, sintieron mucha tristeza y decidieron hacer un funeral, para quienes habían dado su vida por salvar a uno de los suyos. Asistieron al entierro, usando brazaletes de color negro para simbolizar su dolor. Estaban tan tristes en la ceremonia, que empezaron a llorar. A medida que las lágrimas rodaban por sus caras, la tintura de los brazaletes negros se empezó a correr y a mezclarse con ellas. Al restregarse los ojos, la tintura negra formó grandes manchas.\n\nEntonces, los osos tomaron la decisión de no lavarse nunca más, para así recordar a las cuatro valientes muchachas. También desearon que sus cachorros y los que vinieran en el futuro recordaran lo que había sucedido."
     }
   ]
 }

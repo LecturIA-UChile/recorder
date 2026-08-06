@@ -7,9 +7,9 @@ namespace LecturIA.Core.Abstractions;
 /// the UID back into the original student.
 /// </summary>
 /// <remarks>
-/// The UID is the only PII-bearing surface that LecturIA writes to disk
-/// (file names and the persistent course list). The codec is the single
-/// point where student metadata enters or leaves the encrypted form.
+/// The UID protects student metadata in the persistent course list and
+/// remains readable for compatibility with legacy recording file names.
+/// New recording file names use a separate RUT-only pseudonym.
 /// </remarks>
 public interface IStudentUidCodec
 {

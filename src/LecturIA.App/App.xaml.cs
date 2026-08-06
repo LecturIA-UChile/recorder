@@ -209,7 +209,19 @@ public partial class App : Application
             authenticationService.UserChanged -= OnAuthenticatedUserChanged;
         }
 
-        _services?.Dispose();
+        if (_services is not null)
+        {
+            try
+            {
+                _services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+            catch (Exception)
+            {
+            }
+
+            _services = null;
+        }
+
         base.OnExit(e);
     }
 
@@ -236,11 +248,20 @@ public partial class App : Application
             new InMemoryStudentUidKeyProvider(EmbeddedUidKeyResource.Load()));
         services.AddSingleton<IStudentUidCodec>(sp =>
             new SivStudentUidCodec(sp.GetRequiredService<IStudentUidKeyProvider>()));
+        services.AddSingleton<IStudentRecordingIdProvider>(sp =>
+            new HmacStudentRecordingIdProvider(
+                sp.GetRequiredService<IStudentUidKeyProvider>()));
         services.AddSingleton<ICourseUidCodec>(sp =>
             new SivCourseUidCodec(sp.GetRequiredService<IStudentUidKeyProvider>()));
 
         services.AddSingleton<IRecordingPathResolver>(sp =>
-            new DesktopRecordingPathResolver(sp.GetRequiredService<IStudentUidCodec>()));
+            new DesktopRecordingPathResolver(
+                sp.GetRequiredService<IStudentRecordingIdProvider>()));
+        services.AddSingleton<IRecordingStatusProvider>(sp =>
+            new CompletedRecordingIndex(
+                sp.GetRequiredService<IRecordingPathResolver>(),
+                sp.GetRequiredService<IStudentRecordingIdProvider>(),
+                sp.GetRequiredService<IStudentUidCodec>()));
         services.AddSingleton<ICourseRepository>(sp =>
             new JsonCourseRepository(
                 AppPaths.CoursesFile,

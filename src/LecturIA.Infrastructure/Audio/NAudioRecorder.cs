@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 
 using LecturIA.Core.Abstractions;
 using LecturIA.Core.Recording;
@@ -27,6 +28,7 @@ public sealed class NAudioRecorder : IAudioRecorder
 
     private readonly IRecordingEncryptor _encryptor;
     private readonly object _inputTestSync = new();
+    private readonly object _sessionRecordingSync = new();
 
     private WaveInEvent? _waveIn;
     private WaveInEvent? _inputTest;
@@ -34,6 +36,12 @@ public sealed class NAudioRecorder : IAudioRecorder
     private byte[]? _inputTestRecording;
     private WaveOutEvent? _inputTestOutput;
     private RawSourceWaveStream? _inputTestPlaybackStream;
+    private MemoryStream? _pendingSessionRecordingBuffer;
+    private byte[]? _latestSessionRecording;
+    private TimeSpan _latestSessionRecordingDuration;
+    private TimeSpan _latestSessionRecordingPosition;
+    private WaveOutEvent? _sessionRecordingOutput;
+    private Mp3FileReader? _sessionRecordingPlaybackStream;
     private LameMP3FileWriter? _writer;
     private Stream? _encryptingStream;
     private string? _outputPath;
@@ -70,6 +78,58 @@ public sealed class NAudioRecorder : IAudioRecorder
     }
 
     /// <inheritdoc />
+    public bool HasLatestSessionRecording
+    {
+        get
+        {
+            lock (_sessionRecordingSync)
+            {
+                return _latestSessionRecording is { Length: > 0 };
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public TimeSpan LatestSessionRecordingDuration
+    {
+        get
+        {
+            lock (_sessionRecordingSync)
+            {
+                return _latestSessionRecordingDuration;
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public TimeSpan LatestSessionRecordingPosition
+    {
+        get
+        {
+            lock (_sessionRecordingSync)
+            {
+                if (_sessionRecordingPlaybackStream is null)
+                {
+                    return _latestSessionRecordingPosition;
+                }
+
+                try
+                {
+                    var position = _sessionRecordingPlaybackStream.CurrentTime;
+                    return _latestSessionRecordingDuration > TimeSpan.Zero &&
+                           position > _latestSessionRecordingDuration
+                        ? _latestSessionRecordingDuration
+                        : position;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return _latestSessionRecordingPosition;
+                }
+            }
+        }
+    }
+
+    /// <inheritdoc />
     public event EventHandler<RecordingState>? StateChanged;
 
     /// <inheritdoc />
@@ -77,6 +137,9 @@ public sealed class NAudioRecorder : IAudioRecorder
 
     /// <inheritdoc />
     public event EventHandler<bool>? InputTestPlaybackStateChanged;
+
+    /// <inheritdoc />
+    public event EventHandler<bool>? SessionRecordingPlaybackStateChanged;
 
     /// <inheritdoc />
     public IReadOnlyList<AudioInputDevice> GetInputDevices()
@@ -106,7 +169,8 @@ public sealed class NAudioRecorder : IAudioRecorder
     {
         if (_state == RecordingState.Recording ||
             _inputTest is not null ||
-            _inputTestOutput is not null)
+            _inputTestOutput is not null ||
+            _sessionRecordingOutput is not null)
         {
             throw new InvalidOperationException("Another audio operation is already active.");
         }
@@ -157,7 +221,8 @@ public sealed class NAudioRecorder : IAudioRecorder
     {
         if (_state == RecordingState.Recording ||
             _inputTest is not null ||
-            _inputTestOutput is not null)
+            _inputTestOutput is not null ||
+            _sessionRecordingOutput is not null)
         {
             throw new InvalidOperationException("Another audio operation is already active.");
         }
@@ -214,6 +279,86 @@ public sealed class NAudioRecorder : IAudioRecorder
     }
 
     /// <inheritdoc />
+    public void PlayLatestSessionRecording()
+    {
+        if (_state == RecordingState.Recording ||
+            _inputTest is not null ||
+            _inputTestOutput is not null ||
+            _sessionRecordingOutput is not null)
+        {
+            throw new InvalidOperationException("Another audio operation is already active.");
+        }
+
+        byte[] recording;
+        lock (_sessionRecordingSync)
+        {
+            if (_latestSessionRecording is not { Length: > 0 })
+            {
+                throw new InvalidOperationException(
+                    "No completed session recording is available for playback.");
+            }
+
+            recording = _latestSessionRecording;
+        }
+
+        var playbackStateRaised = false;
+        try
+        {
+            var recordingStream = new MemoryStream(recording, writable: false);
+            var playbackStream = new Mp3FileReader(recordingStream);
+            lock (_sessionRecordingSync)
+            {
+                _sessionRecordingPlaybackStream = playbackStream;
+                _latestSessionRecordingPosition = TimeSpan.Zero;
+                if (playbackStream.TotalTime > TimeSpan.Zero)
+                {
+                    _latestSessionRecordingDuration = playbackStream.TotalTime;
+                }
+            }
+
+            _sessionRecordingOutput = new WaveOutEvent();
+            _sessionRecordingOutput.PlaybackStopped += OnSessionRecordingPlaybackStopped;
+            _sessionRecordingOutput.Init(playbackStream);
+            SessionRecordingPlaybackStateChanged?.Invoke(this, true);
+            playbackStateRaised = true;
+            _sessionRecordingOutput.Play();
+        }
+        catch
+        {
+            DisposeSessionRecordingPlayback();
+            if (playbackStateRaised)
+            {
+                SessionRecordingPlaybackStateChanged?.Invoke(this, false);
+            }
+
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public void StopLatestSessionRecordingPlayback()
+    {
+        _sessionRecordingOutput?.Stop();
+    }
+
+    /// <inheritdoc />
+    public void ClearLatestSessionRecording()
+    {
+        StopLatestSessionRecordingPlayback();
+        lock (_sessionRecordingSync)
+        {
+            if (_latestSessionRecording is not null)
+            {
+                CryptographicOperations.ZeroMemory(_latestSessionRecording);
+                _latestSessionRecording = null;
+            }
+
+            _latestSessionRecordingDuration = TimeSpan.Zero;
+            _latestSessionRecordingPosition = TimeSpan.Zero;
+        }
+    }
+
+    /// <inheritdoc />
     public void Start(
         string outputFilePath,
         int inputDeviceNumber,
@@ -223,7 +368,8 @@ public sealed class NAudioRecorder : IAudioRecorder
 
         if (_state == RecordingState.Recording ||
             _inputTest is not null ||
-            _inputTestOutput is not null)
+            _inputTestOutput is not null ||
+            _sessionRecordingOutput is not null)
         {
             throw new InvalidOperationException("Another audio operation is already active.");
         }
@@ -236,35 +382,34 @@ public sealed class NAudioRecorder : IAudioRecorder
             Directory.CreateDirectory(directory);
         }
 
-        _outputPath = outputFilePath;
-        _waveIn = CreateWaveInEvent(inputDeviceNumber);
-
         FileStream? fileStream = null;
         try
         {
+            _outputPath = outputFilePath;
+            _waveIn = CreateWaveInEvent(inputDeviceNumber);
             fileStream = new FileStream(outputFilePath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
             _encryptingStream = _encryptor.WrapForWrite(fileStream, metadata);
             fileStream = null;
-            _writer = new LameMP3FileWriter(_encryptingStream, _waveIn.WaveFormat, Mp3BitrateKbps);
+            _pendingSessionRecordingBuffer = new MemoryStream();
+            var recordingOutput = new DuplicatingWriteStream(
+                _encryptingStream,
+                _pendingSessionRecordingBuffer);
+            _writer = new LameMP3FileWriter(
+                recordingOutput,
+                _waveIn.WaveFormat,
+                Mp3BitrateKbps);
+
+            _waveIn.DataAvailable += OnDataAvailable;
+            _waveIn.RecordingStopped += OnRecordingStopped;
+            _stopwatch = Stopwatch.StartNew();
+            _waveIn.StartRecording();
+            TransitionTo(RecordingState.Recording);
         }
         catch
         {
-            _writer?.Dispose();
-            _writer = null;
-            _encryptingStream?.Dispose();
-            _encryptingStream = null;
-            fileStream?.Dispose();
-            _waveIn.Dispose();
-            _waveIn = null;
+            CleanupFailedStart(fileStream, outputFilePath);
             throw;
         }
-
-        _waveIn.DataAvailable += OnDataAvailable;
-        _waveIn.RecordingStopped += OnRecordingStopped;
-
-        _stopwatch = Stopwatch.StartNew();
-        _waveIn.StartRecording();
-        TransitionTo(RecordingState.Recording);
     }
 
     /// <inheritdoc />
@@ -286,11 +431,8 @@ public sealed class NAudioRecorder : IAudioRecorder
     {
         StopInputTest();
         DisposeInputTestPlayback();
+        DisposeSessionRecordingPlayback();
         DiscardInputTestBuffer();
-        lock (_inputTestSync)
-        {
-            _inputTestRecording = null;
-        }
 
         if (_state == RecordingState.Recording)
         {
@@ -303,6 +445,14 @@ public sealed class NAudioRecorder : IAudioRecorder
                 // Disposal must not mask the failure that initiated shutdown.
             }
         }
+
+        DiscardPendingSessionRecording();
+        lock (_inputTestSync)
+        {
+            _inputTestRecording = null;
+        }
+
+        ClearLatestSessionRecording();
 
         DisposeNativeResources();
     }
@@ -359,6 +509,13 @@ public sealed class NAudioRecorder : IAudioRecorder
         InputTestPlaybackStateChanged?.Invoke(this, false);
     }
 
+    private void OnSessionRecordingPlaybackStopped(object? sender, StoppedEventArgs e)
+    {
+        CaptureSessionRecordingPlaybackPosition();
+        DisposeSessionRecordingPlayback();
+        SessionRecordingPlaybackStateChanged?.Invoke(this, false);
+    }
+
     private void OnDataAvailable(object? sender, WaveInEventArgs e)
     {
         try
@@ -377,27 +534,41 @@ public sealed class NAudioRecorder : IAudioRecorder
         _stopwatch?.Stop();
         var duration = _stopwatch?.Elapsed ?? TimeSpan.Zero;
         var path = _outputPath;
+        var failure = e.Exception;
 
-        DisposeNativeResources();
-
-        if (e.Exception is not null)
+        try
         {
+            DisposeNativeResources();
+        }
+        catch (Exception ex)
+        {
+            failure ??= ex;
+            DisposeNativeResourcesIgnoringErrors();
+        }
+
+        _outputPath = null;
+        if (failure is not null)
+        {
+            DiscardPendingSessionRecording();
+            TryDeleteFailedOutput(path);
             TransitionTo(RecordingState.Error);
-            _stopCompletion?.TrySetException(e.Exception);
+            _stopCompletion?.TrySetException(failure);
             return;
         }
 
-        TransitionTo(RecordingState.Stopped);
+        if (path is null)
+        {
+            DiscardPendingSessionRecording();
+            var missingPath = new InvalidOperationException(
+                "The output path of the recording could not be determined.");
+            TransitionTo(RecordingState.Error);
+            _stopCompletion?.TrySetException(missingPath);
+            return;
+        }
 
-        if (path is not null)
-        {
-            _stopCompletion?.TrySetResult(new RecordingResult(path, duration));
-        }
-        else
-        {
-            _stopCompletion?.TrySetException(
-                new InvalidOperationException("The output path of the recording could not be determined."));
-        }
+        PromotePendingSessionRecording(duration);
+        TransitionTo(RecordingState.Stopped);
+        _stopCompletion?.TrySetResult(new RecordingResult(path, duration));
     }
 
     private void TransitionTo(RecordingState next)
@@ -440,6 +611,97 @@ public sealed class NAudioRecorder : IAudioRecorder
         _inputTestPlaybackStream = null;
     }
 
+    private void DisposeSessionRecordingPlayback()
+    {
+        if (_sessionRecordingOutput is not null)
+        {
+            _sessionRecordingOutput.PlaybackStopped -= OnSessionRecordingPlaybackStopped;
+            _sessionRecordingOutput.Dispose();
+            _sessionRecordingOutput = null;
+        }
+
+        lock (_sessionRecordingSync)
+        {
+            _sessionRecordingPlaybackStream?.Dispose();
+            _sessionRecordingPlaybackStream = null;
+        }
+    }
+
+    private void CaptureSessionRecordingPlaybackPosition()
+    {
+        lock (_sessionRecordingSync)
+        {
+            if (_sessionRecordingPlaybackStream is null)
+            {
+                return;
+            }
+
+            try
+            {
+                var position = _sessionRecordingPlaybackStream.CurrentTime;
+                _latestSessionRecordingPosition =
+                    _latestSessionRecordingDuration > TimeSpan.Zero &&
+                    position > _latestSessionRecordingDuration
+                        ? _latestSessionRecordingDuration
+                        : position;
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+    }
+
+    private void DiscardPendingSessionRecording()
+    {
+        if (_pendingSessionRecordingBuffer is null)
+        {
+            return;
+        }
+
+        if (_pendingSessionRecordingBuffer.TryGetBuffer(out var buffer))
+        {
+            CryptographicOperations.ZeroMemory(buffer.AsSpan());
+        }
+
+        _pendingSessionRecordingBuffer.Dispose();
+        _pendingSessionRecordingBuffer = null;
+    }
+
+    private void PromotePendingSessionRecording(TimeSpan duration)
+    {
+        var pendingRecording = _pendingSessionRecordingBuffer
+            ?? throw new InvalidOperationException(
+                "The completed recording has no in-memory playback buffer.");
+        _pendingSessionRecordingBuffer = null;
+
+        byte[] recording;
+        try
+        {
+            recording = pendingRecording.ToArray();
+        }
+        finally
+        {
+            if (pendingRecording.TryGetBuffer(out var pendingBuffer))
+            {
+                CryptographicOperations.ZeroMemory(pendingBuffer.AsSpan());
+            }
+
+            pendingRecording.Dispose();
+        }
+
+        lock (_sessionRecordingSync)
+        {
+            if (_latestSessionRecording is not null)
+            {
+                CryptographicOperations.ZeroMemory(_latestSessionRecording);
+            }
+
+            _latestSessionRecording = recording;
+            _latestSessionRecordingDuration = duration;
+            _latestSessionRecordingPosition = TimeSpan.Zero;
+        }
+    }
+
     private void DisposeNativeResources()
     {
         if (_waveIn is not null)
@@ -455,5 +717,63 @@ public sealed class NAudioRecorder : IAudioRecorder
         _encryptingStream?.Dispose();
         _encryptingStream = null;
         _stopwatch = null;
+    }
+
+    private void CleanupFailedStart(FileStream? fileStream, string outputFilePath)
+    {
+        // Cleanup must preserve the original device or encoder failure.
+        DisposeNativeResourcesIgnoringErrors(fileStream);
+        DiscardPendingSessionRecording();
+        _outputPath = null;
+        TryDeleteFailedOutput(outputFilePath);
+    }
+
+    private void DisposeNativeResourcesIgnoringErrors(IDisposable? additionalResource = null)
+    {
+        if (_waveIn is not null)
+        {
+            _waveIn.DataAvailable -= OnDataAvailable;
+            _waveIn.RecordingStopped -= OnRecordingStopped;
+        }
+
+        TryDispose(_writer);
+        _writer = null;
+        TryDispose(_encryptingStream);
+        _encryptingStream = null;
+        TryDispose(additionalResource);
+        TryDispose(_waveIn);
+        _waveIn = null;
+        _stopwatch?.Stop();
+        _stopwatch = null;
+    }
+
+    private static void TryDispose(IDisposable? resource)
+    {
+        try
+        {
+            resource?.Dispose();
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    private static void TryDeleteFailedOutput(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 }

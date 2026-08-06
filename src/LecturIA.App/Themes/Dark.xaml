@@ -2,35 +2,35 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- =====================================================================
-         Semantic color tokens - light theme
+         Semantic color tokens - dark theme
          ===================================================================== -->
-    <SolidColorBrush x:Key="AccentBrush"          Color="#0D47A1"/>
-    <SolidColorBrush x:Key="DangerBrush"          Color="#E53935"/>
-    <SolidColorBrush x:Key="RecordBrush"           Color="#43A047"/>
-    <SolidColorBrush x:Key="SuccessBrush"          Color="#2E7D32"/>
-    <SolidColorBrush x:Key="StopBrush"             Color="#E53935"/>
-    <SolidColorBrush x:Key="BackgroundBrush"       Color="#F5F7FA"/>
-    <SolidColorBrush x:Key="SurfaceBrush"          Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="BorderBrush"           Color="#CBD2D9"/>
-    <SolidColorBrush x:Key="TextBrush"             Color="#1F2933"/>
-    <SolidColorBrush x:Key="MutedBrush"            Color="#52606D"/>
-    <SolidColorBrush x:Key="PlaceholderBrush"      Color="#9AA5B1"/>
-    <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#F0F2F5"/>
-    <SolidColorBrush x:Key="RowHoverBrush"         Color="#EBF4FE"/>
-    <SolidColorBrush x:Key="RowSelectedBrush"      Color="#BBDEFB"/>
-    <SolidColorBrush x:Key="RowSelectedTextBrush"  Color="#1F2933"/>
-    <SolidColorBrush x:Key="ScrollThumbBrush"      Color="#CBD2D9"/>
-    <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#9AA5B1"/>
-    <SolidColorBrush x:Key="ScrollTrackBrush"      Color="#F0F2F5"/>
+    <SolidColorBrush x:Key="AccentBrush"          Color="#42A5F5"/>
+    <SolidColorBrush x:Key="DangerBrush"          Color="#EF5350"/>
+    <SolidColorBrush x:Key="RecordBrush"           Color="#66BB6A"/>
+    <SolidColorBrush x:Key="SuccessBrush"          Color="#81C784"/>
+    <SolidColorBrush x:Key="StopBrush"             Color="#EF5350"/>
+    <SolidColorBrush x:Key="BackgroundBrush"       Color="#1A1D23"/>
+    <SolidColorBrush x:Key="SurfaceBrush"          Color="#23272F"/>
+    <SolidColorBrush x:Key="BorderBrush"           Color="#3A3F4B"/>
+    <SolidColorBrush x:Key="TextBrush"             Color="#E4E7EB"/>
+    <SolidColorBrush x:Key="MutedBrush"            Color="#9AA5B1"/>
+    <SolidColorBrush x:Key="PlaceholderBrush"      Color="#616E7C"/>
+    <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#1E2229"/>
+    <SolidColorBrush x:Key="RowHoverBrush"         Color="#2C3340"/>
+    <SolidColorBrush x:Key="RowSelectedBrush"      Color="#1E3A5F"/>
+    <SolidColorBrush x:Key="RowSelectedTextBrush"  Color="#E4E7EB"/>
+    <SolidColorBrush x:Key="ScrollThumbBrush"      Color="#3A3F4B"/>
+    <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#52606D"/>
+    <SolidColorBrush x:Key="ScrollTrackBrush"      Color="#1E2229"/>
 
     <!-- Warning banner -->
-    <SolidColorBrush x:Key="WarningBackgroundBrush" Color="#FFF3CD"/>
-    <SolidColorBrush x:Key="WarningBorderBrush"     Color="#FFEAA7"/>
-    <SolidColorBrush x:Key="WarningTextBrush"       Color="#856404"/>
+    <SolidColorBrush x:Key="WarningBackgroundBrush" Color="#3D2E00"/>
+    <SolidColorBrush x:Key="WarningBorderBrush"     Color="#5C4400"/>
+    <SolidColorBrush x:Key="WarningTextBrush"       Color="#FFD966"/>
 
     <!-- Modal overlay scrim, used by the pre-recording countdown. Almost
          opaque so the dimmed UI stays visible behind the countdown text. -->
-    <SolidColorBrush x:Key="OverlayScrimBrush"      Color="#F0F5F7FA"/>
+    <SolidColorBrush x:Key="OverlayScrimBrush"      Color="#F01A1D23"/>
 
     <!-- =====================================================================
          GridViewColumnHeader
