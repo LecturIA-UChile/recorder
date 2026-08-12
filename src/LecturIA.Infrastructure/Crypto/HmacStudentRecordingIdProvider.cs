@@ -36,6 +36,14 @@ public sealed class HmacStudentRecordingIdProvider : IStudentRecordingIdProvider
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(student);
 
+        // Students fetched from the control plane already carry a stable,
+        // server-assigned pseudonym. Use it verbatim so recordings match
+        // the identifier the backend expects, bypassing RUT derivation.
+        if (!string.IsNullOrWhiteSpace(student.RecordingId))
+        {
+            return student.RecordingId;
+        }
+
         var normalizedRut = NormalizeRut(student.Rut);
         if (normalizedRut.Length == 0)
         {

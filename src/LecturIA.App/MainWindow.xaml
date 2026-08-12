@@ -201,13 +201,23 @@
                                                Foreground="{DynamicResource MutedBrush}"/>
                                 </StackPanel>
                             </StackPanel>
-                            <Button Grid.Column="1"
-                                    Content="Importar curso"
-                                    Command="{Binding AddCourseCommand}"
-                                    Style="{StaticResource PrimaryButton}"
-                                    Padding="12,7"
-                                    FontSize="12"
-                                    Visibility="{Binding CanManageCourses, Converter={StaticResource BoolToVisibility}}"/>
+                            <StackPanel Grid.Column="1"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                <Button Content="Actualizar"
+                                        Command="{Binding RefreshCoursesCommand}"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Padding="12,7"
+                                        FontSize="12"
+                                        Visibility="{Binding IsProfessorCoursesMode, Converter={StaticResource BoolToVisibility}}"/>
+                                <Button Content="Importar curso"
+                                        Command="{Binding AddCourseCommand}"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Margin="8,0,0,0"
+                                        Padding="12,7"
+                                        FontSize="12"
+                                        Visibility="{Binding CanManageCourses, Converter={StaticResource BoolToVisibility}}"/>
+                            </StackPanel>
                         </Grid>
 
                         <!-- Current course summary or selector. -->
@@ -383,7 +393,8 @@
                                           BorderThickness="0"
                                           FontSize="12.5"
                                           Foreground="{DynamicResource TextBrush}"
-                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                          Visibility="{Binding IsLoading, Converter={StaticResource InverseBoolToVisibility}}">
                                     <b:Interaction.Behaviors>
                                         <behaviors:StretchColumnsGridViewBehavior/>
                                     </b:Interaction.Behaviors>
@@ -429,7 +440,7 @@
                                            FontSize="12.5"
                                            Foreground="{DynamicResource PlaceholderBrush}"
                                            IsHitTestVisible="False"
-                                           Visibility="{Binding HasNoStudents, Converter={StaticResource BoolToVisibility}}"/>
+                                           Visibility="{Binding ShowNoStudentsMessage, Converter={StaticResource BoolToVisibility}}"/>
 
                                 <StackPanel HorizontalAlignment="Center"
                                             VerticalAlignment="Center"
@@ -507,7 +518,7 @@
                                 <StackPanel Grid.Column="1"
                                             Orientation="Horizontal"
                                             VerticalAlignment="Center"
-                                            Visibility="{Binding SelectedStudent.IsRecorded, Converter={StaticResource BoolToVisibility}}">
+                                            Visibility="{Binding SelectedStudent.IsRecorded, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}">
                                     <Path Width="15"
                                           Height="12"
                                           Margin="0,0,6,0"
@@ -1071,6 +1082,7 @@
                     <StackPanel Grid.Column="1"
                                 Margin="18,0,0,0"
                                 Orientation="Horizontal"
+                                HorizontalAlignment="Right"
                                 VerticalAlignment="Center">
                         <Border Width="42"
                                 Height="42"

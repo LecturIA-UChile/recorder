@@ -104,6 +104,58 @@ internal sealed class CognitoAuthenticationService : IAuthenticationService, IDi
     }
 
     /// <inheritdoc />
+    public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+
+        string? token;
+        DateTimeOffset expiresAt;
+        await _sessionGate.WaitAsync(cancellationToken);
+        try
+        {
+            token = _accessToken;
+            expiresAt = _expiresAt;
+        }
+        finally
+        {
+            _sessionGate.Release();
+        }
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new AuthenticationFlowException(
+                "No Cognito access token is available; the user is not signed in.",
+                "Tu sesión no está activa. Vuelve a iniciar sesión.");
+        }
+
+        // Renew proactively when the token is within the refresh window so
+        // the caller always receives a token with headroom to spare.
+        if (DateTimeOffset.UtcNow >= expiresAt - RefreshAdvance)
+        {
+            await RefreshTokensAsync(cancellationToken);
+
+            await _sessionGate.WaitAsync(cancellationToken);
+            try
+            {
+                token = _accessToken;
+            }
+            finally
+            {
+                _sessionGate.Release();
+            }
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                throw new AuthenticationFlowException(
+                    "The Cognito session could not be renewed.",
+                    "No fue posible renovar tu sesión. Vuelve a iniciar sesión.");
+            }
+        }
+
+        return token;
+    }
+
+    /// <inheritdoc />
     public async Task SignOutAsync(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();

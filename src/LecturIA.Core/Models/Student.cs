@@ -8,6 +8,18 @@ namespace LecturIA.Core.Models;
 /// <param name="LastName">Family name(s) of the student.</param>
 public sealed record Student(string Rut, string FirstName, string LastName)
 {
+    /// <summary>
+    /// Stable, provider-assigned recording identifier for students whose
+    /// primary key is not a local RUT (e.g. courses fetched from the
+    /// control plane, where each student carries a server pseudonym).
+    /// </summary>
+    /// <remarks>
+    /// When present, this value is used verbatim as the recording key so
+    /// files match the identifier the backend expects. When absent, the
+    /// recording key is derived from <see cref="Rut"/>.
+    /// </remarks>
+    public string? RecordingId { get; init; }
+
     /// <summary>Full display name composed of first and last name.</summary>
     public string Name => $"{FirstName} {LastName}".Trim();
 

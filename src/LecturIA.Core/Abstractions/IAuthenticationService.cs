@@ -22,6 +22,16 @@ public interface IAuthenticationService
     /// <returns>The identity established by the provider.</returns>
     Task<AuthenticatedUser> SignInAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns a valid access token for calling protected APIs on behalf of
+    /// the current session, renewing it first when it is about to expire.
+    /// </summary>
+    /// <returns>The current access token issued by the provider.</returns>
+    /// <exception cref="AuthenticationFlowException">
+    /// There is no active session, or the token could not be renewed.
+    /// </exception>
+    Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Ends the current provider session.</summary>
     Task SignOutAsync(CancellationToken cancellationToken = default);
 }
