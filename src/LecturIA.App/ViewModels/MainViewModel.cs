@@ -24,6 +24,8 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly ICourseRepository _courseRepository;
     private readonly ICourseImporter _courseImporter;
+    private readonly ICoursesClient _coursesClient;
+    private readonly IAuthenticationService _authenticationService;
     private readonly IAudioRecorder _audioRecorder;
     private readonly IRecordingPathResolver _pathResolver;
     private readonly IRecordingStatusProvider _recordingStatusProvider;
@@ -45,6 +47,8 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel(
         ICourseRepository courseRepository,
         ICourseImporter courseImporter,
+        ICoursesClient coursesClient,
+        IAuthenticationService authenticationService,
         IAudioRecorder audioRecorder,
         IRecordingPathResolver pathResolver,
         IRecordingStatusProvider recordingStatusProvider,
@@ -54,6 +58,8 @@ public sealed partial class MainViewModel : ObservableObject
     {
         _courseRepository = courseRepository;
         _courseImporter = courseImporter;
+        _coursesClient = coursesClient;
+        _authenticationService = authenticationService;
         _audioRecorder = audioRecorder;
         _pathResolver = pathResolver;
         _recordingStatusProvider = recordingStatusProvider;
@@ -136,6 +142,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleRecordingCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RefreshCoursesCommand))]
     private bool _isTestingAudio;
 
     /// <summary>Current input peak as a percentage from 0 to 100.</summary>
@@ -155,6 +162,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleRecordingCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RefreshCoursesCommand))]
     private bool _isPlayingAudioTest;
 
     /// <summary>Caption of the input test button.</summary>
@@ -177,6 +185,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleRecordingCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RefreshCoursesCommand))]
     private bool _isPlayingLatestSessionRecording;
 
     /// <summary>Caption of the latest session recording playback button.</summary>
@@ -285,6 +294,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RefreshCoursesCommand))]
     private bool _isRecording;
 
     /// <summary><see langword="true"/> while an asynchronous operation is in progress.</summary>
@@ -296,11 +306,14 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RefreshCoursesCommand))]
     private bool _isBusy;
 
     /// <summary><see langword="true"/> while the initial data load is running.</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RefreshCoursesCommand))]
+    [NotifyPropertyChangedFor(nameof(ShowNoStudentsMessage))]
     private bool _isLoading;
 
     /// <summary>
@@ -315,6 +328,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ToggleAudioTestPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleLatestSessionRecordingPlaybackCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogoutCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RefreshCoursesCommand))]
     private bool _isCountingDown;
 
     /// <summary>
@@ -457,6 +471,13 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary><see langword="true"/> when the selected course has no students to show.</summary>
     public bool HasNoStudents => Students.Count == 0;
 
+    /// <summary>
+    /// <see langword="true"/> when the empty-roster message should be shown.
+    /// Suppressed while a load is in progress so it does not overlap the
+    /// loading spinner.
+    /// </summary>
+    public bool ShowNoStudentsMessage => HasNoStudents && !IsLoading;
+
     /// <summary>Assigns the identity established for the active session.</summary>
     public void SetAuthenticatedUser(AuthenticatedUser user)
     {
@@ -487,6 +508,12 @@ public sealed partial class MainViewModel : ObservableObject
         AuthenticatedUser = null;
         AuthenticatedDisplayName = string.Empty;
         AuthenticatedRole = string.Empty;
+
+        // Drop the previous teacher's roster so their students' names do not
+        // linger in memory or on screen after the session ends.
+        _coursesLoadFailed = false;
+        ReplaceCourses(Array.Empty<Course>());
+
         NotifyCourseManagementPermissionChanged();
     }
 
@@ -517,13 +544,52 @@ public sealed partial class MainViewModel : ObservableObject
         !IsPlayingAudioTest &&
         !IsPlayingLatestSessionRecording;
 
-    /// <summary>Loads the persisted course list when the window first appears.</summary>
+    /// <summary><see langword="true"/> when courses are sourced from the control plane (regular teacher session).</summary>
+    public bool IsProfessorCoursesMode => !IsAdminMode;
+
+    private bool _coursesLoadFailed;
+
+    /// <summary>
+    /// Loads the roster when the window first appears. Distributor sessions
+    /// keep working with the locally imported courses; regular teacher
+    /// sessions fetch their courses from the control plane.
+    /// </summary>
     public async Task InitializeAsync()
+    {
+        LoadAudioInputDevices();
+
+        if (IsAdminMode)
+        {
+            await LoadLocalCoursesAsync();
+        }
+        else
+        {
+            await LoadCoursesFromApiAsync();
+        }
+    }
+
+    /// <summary>
+    /// Reloads the roster for the current session. Called after switching
+    /// users, since the window (and this view model) are reused across
+    /// sessions and courses are scoped to the signed-in teacher.
+    /// </summary>
+    public async Task ReloadCoursesAsync()
+    {
+        if (IsAdminMode)
+        {
+            await LoadLocalCoursesAsync();
+        }
+        else
+        {
+            await LoadCoursesFromApiAsync();
+        }
+    }
+
+    private async Task LoadLocalCoursesAsync()
     {
         try
         {
             IsLoading = true;
-            LoadAudioInputDevices();
             var existing = await _courseRepository.LoadAsync();
             ReplaceCourses(existing);
             if (existing.Count == 0)
@@ -541,8 +607,90 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Fetches the authenticated teacher's courses from the control plane and
+    /// replaces the in-memory roster. The response is never persisted to disk
+    /// because it carries student names (personal data).
+    /// </summary>
+    private async Task LoadCoursesFromApiAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            _coursesLoadFailed = false;
+            StatusMessage = "Cargando tus cursos...";
+
+            var accessToken = await _authenticationService.GetAccessTokenAsync();
+            var courses = await _coursesClient.GetMyCoursesAsync(accessToken);
+
+            ReplaceCourses(courses);
+            StatusMessage = courses.Count == 0
+                ? EmptyCoursesMessage()
+                : $"{courses.Count} curso(s) cargado(s).";
+        }
+        catch (CoursesRequestException ex)
+        {
+            HandleCoursesRequestFailure(ex);
+        }
+        catch (AuthenticationFlowException ex)
+        {
+            _coursesLoadFailed = true;
+            ReplaceCourses(Array.Empty<Course>());
+            StatusMessage = ex.UserMessage;
+            _dialogService.ShowInfo("Sesión no válida", ex.UserMessage);
+        }
+        catch (Exception ex)
+        {
+            _coursesLoadFailed = true;
+            ReplaceCourses(Array.Empty<Course>());
+            StatusMessage = "No se pudieron cargar tus cursos.";
+            _dialogService.ShowError("Error al cargar tus cursos", ex.Message);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void HandleCoursesRequestFailure(CoursesRequestException ex)
+    {
+        ReplaceCourses(Array.Empty<Course>());
+        StatusMessage = ex.UserMessage;
+
+        switch (ex.Reason)
+        {
+            case CoursesRequestFailure.NotAProfessor:
+                // Retrying cannot fix a missing professor profile.
+                _coursesLoadFailed = false;
+                _dialogService.ShowInfo("Cuenta sin perfil de profesor", ex.UserMessage);
+                break;
+            case CoursesRequestFailure.Unauthorized:
+                _coursesLoadFailed = true;
+                _dialogService.ShowInfo("Sesión no válida", ex.UserMessage);
+                break;
+            default:
+                _coursesLoadFailed = true;
+                break;
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRefreshCourses))]
+    private async Task RefreshCoursesAsync() => await LoadCoursesFromApiAsync();
+
+    private bool CanRefreshCourses() =>
+        IsProfessorCoursesMode &&
+        !IsLoading &&
+        !IsBusy &&
+        !IsRecording &&
+        !IsCountingDown &&
+        !IsTestingAudio &&
+        !IsPlayingAudioTest &&
+        !IsPlayingLatestSessionRecording;
+
     partial void OnIsAdminModeChanged(bool value)
     {
+        OnPropertyChanged(nameof(IsProfessorCoursesMode));
+        RefreshCoursesCommand.NotifyCanExecuteChanged();
         if (!HasAnyCourse)
         {
             StatusMessage = EmptyCoursesMessage();
@@ -624,6 +772,7 @@ public sealed partial class MainViewModel : ObservableObject
         StudentsView.Refresh();
         SelectedStudent = Students.Count == 1 ? Students[0] : null;
         OnPropertyChanged(nameof(HasNoStudents));
+        OnPropertyChanged(nameof(ShowNoStudentsMessage));
     }
 
     private void UpdateReadingTextOptions()
@@ -1335,7 +1484,20 @@ public sealed partial class MainViewModel : ObservableObject
         SelectedCourse = Courses.FirstOrDefault();
     }
 
-    private string EmptyCoursesMessage() => CanManageCourses
-        ? "Aún no hay cursos. Importa una planilla para comenzar."
-        : "No hay cursos cargados. Contacta al distribuidor para recibir tu curso.";
+    private string EmptyCoursesMessage()
+    {
+        if (CanManageCourses)
+        {
+            return "Aún no hay cursos. Importa una planilla para comenzar.";
+        }
+
+        if (IsProfessorCoursesMode)
+        {
+            return _coursesLoadFailed
+                ? "No se pudieron cargar tus cursos. Usa \"Actualizar\" para reintentar."
+                : "No tienes cursos asignados. Si crees que es un error, contacta al administrador.";
+        }
+
+        return "No hay cursos cargados. Contacta al distribuidor para recibir tu curso.";
+    }
 }

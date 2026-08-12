@@ -7,6 +7,7 @@ using LecturIA.App.ViewModels;
 using LecturIA.Core.Abstractions;
 using LecturIA.Core.Models;
 using LecturIA.Infrastructure.Audio;
+using LecturIA.Infrastructure.Courses;
 using LecturIA.Infrastructure.Crypto;
 using LecturIA.Infrastructure.Importers;
 using LecturIA.Infrastructure.Reading;
@@ -170,6 +171,11 @@ public partial class App : Application
             viewModel.IsAdminMode = _adminModeRequested && AuthenticateDistributor();
             ShutdownMode = ShutdownMode.OnLastWindowClose;
             window.Show();
+
+            // The window (and its view model) are reused across sessions, so
+            // the Loaded bootstrap does not run again. Reload the roster for
+            // the newly signed-in teacher explicitly.
+            await viewModel.ReloadCoursesAsync();
         }
         catch (Exception)
         {
@@ -237,6 +243,13 @@ public partial class App : Application
         services.AddSingleton<CognitoOptions>();
         services.AddSingleton<CognitoTokenValidator>();
         services.AddSingleton<IAuthenticationService, CognitoAuthenticationService>();
+
+        // Courses are fetched from the control plane with the Cognito access
+        // token. The client owns a dedicated HttpClient (its own base address
+        // and 35s timeout for database cold starts), kept separate from the
+        // shared client used by the authentication flow.
+        services.AddSingleton<ICoursesClient>(_ => new HttpCoursesClient());
+
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<ICourseImporter, CourseFileImporter>();
 

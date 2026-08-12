@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace LecturIA.Core.Models;
 
 /// <summary>
@@ -22,6 +24,13 @@ public sealed record Course(
     IReadOnlyList<Student> Students)
 {
     /// <summary>
+    /// Academic year the course belongs to, when known. Populated for
+    /// courses fetched from the control plane; <see langword="null"/> for
+    /// locally imported courses that do not carry a year.
+    /// </summary>
+    public int? Year { get; init; }
+
+    /// <summary>
     /// Human-readable label of the course used in selectors and headers.
     /// Combines school with the level and section qualifier when available.
     /// </summary>
@@ -29,25 +38,34 @@ public sealed record Course(
     {
         get
         {
-            var qualifier = $"{Level} {Section}".Trim();
+            var qualifier = CourseLabel;
             if (string.IsNullOrWhiteSpace(School))
             {
-                return string.IsNullOrWhiteSpace(qualifier) ? "Curso sin información" : qualifier;
+                return qualifier;
             }
 
-            return string.IsNullOrWhiteSpace(qualifier) ? School : $"{School} ({qualifier})";
+            return $"{School} ({qualifier})";
         }
     }
 
     /// <summary>
-    /// Short label composed of level and section only (e.g. <c>Primero Básico A</c>).
-    /// Falls back to <c>Curso sin información</c> when both are empty.
+    /// Short label composed of level, section and year when available
+    /// (e.g. <c>Primero Básico A - 2026</c>). Falls back to
+    /// <c>Curso sin información</c> when no descriptor is present.
     /// </summary>
     public string CourseLabel
     {
         get
         {
             var qualifier = $"{Level} {Section}".Trim();
+            if (Year is int year)
+            {
+                var yearText = year.ToString(CultureInfo.InvariantCulture);
+                qualifier = string.IsNullOrWhiteSpace(qualifier)
+                    ? yearText
+                    : $"{qualifier} - {yearText}";
+            }
+
             return string.IsNullOrWhiteSpace(qualifier) ? "Curso sin información" : qualifier;
         }
     }
